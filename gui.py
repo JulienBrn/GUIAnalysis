@@ -4,6 +4,8 @@ from tqdm import tqdm
 import statsmodels.api as sm
 
 
+logger=logging.getLogger(__name__)
+
 import sys
 import matplotlib, importlib
 import matplotlib.pyplot as plt
@@ -28,6 +30,7 @@ from multiprocessing import Process
 from threading import Thread
 import tkinter
 from PyQt5.QtCore import QThread, pyqtSignal
+
 
 class GetResult(QThread):
    progress = pyqtSignal(int)
