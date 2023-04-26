@@ -6,11 +6,8 @@ from matplotlib.figure import Figure
 class MplCanvas(FigureCanvas):
   def __init__(self):
     self.fig = Figure()
-    self.ax = self.fig.add_subplot(111)
+    self.ax = None
     FigureCanvas.__init__(self, self.fig)
-    # FigureCanvas.setSizePolicy(self,
-    # QtGui.QSizePolicy.Expanding,
-    # QtGui.QSizePolicy.Expanding)
     FigureCanvas.updateGeometry(self)
 
 class MplWidget(PyQt5.QtWidgets.QWidget):
