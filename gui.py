@@ -20,7 +20,7 @@ from matplotlib.figure import Figure
 
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QTableView, QMainWindow, QFileDialog
-from PyQt5.QtGui import QIcon, QImage, QStandardItem, QStandardItemModel
+from PyQt5.QtGui import QIcon, QImage, QStandardItem, QStandardItemModel, QMovie
 from PyQt5.QtCore import pyqtSlot
 from  toolbox import DataFrameModel
 from main_window_ui import Ui_MainWindow
@@ -51,6 +51,26 @@ class GetResult(QThread):
                   model.createIndex(index,colind),  model.createIndex(index+1,colind+1), (QtCore.Qt.EditRole,)
                ) 
          self.progress.emit(1)
+
+class GetDataframe(QThread):
+   dfcomputed = pyqtSignal(pd.DataFrame)
+   def __init__(self, df):
+      super().__init__()
+      self.df = df
+   def run(self):
+      res = self.df.get_df().reset_index(drop=True)
+      self.dfcomputed.emit(res)
+
+class ViewResult(QThread):
+   ready = pyqtSignal()
+   def __init__(self, df, canvas, rows):
+      super().__init__()
+      self.df = df
+      self.canvas = canvas
+      self.rows = rows
+   def run(self):
+      self.df.view_item(self.canvas, self.rows)
+      self.ready.emit()
 
 class Window(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
@@ -94,14 +114,47 @@ class Window(QMainWindow, Ui_MainWindow):
               if not self.mpl.canvas.ax is None:
                 for ax in self.mpl.canvas.ax.flat:
                   ax.remove()
-              self.dfs[self.curr_df].view_item(self.mpl.canvas, self.tableView.model()._dataframe.iloc[indices[0], :])
+                self.mpl.canvas.draw()
+              self.process = ViewResult(self.dfs[self.curr_df], self.mpl.canvas, self.tableView.model()._dataframe.iloc[indices[0], :])
               self.tabWidget.setCurrentWidget(self.result_tab)
-              self.mpl.canvas.draw()
+              self.loader_label.setVisible(True)
+              def when_ready():
+                 self.mpl.canvas.draw()
+                 self.loader_label.setVisible(False)
+              self.process.ready.connect(when_ready)
+              self.process.start()
 
         self.compute.clicked.connect(lambda: compute([i.row() for i in self.tableView.selectionModel().selectedRows()]))
         self.view.clicked.connect(lambda: view([i.row() for i in self.tableView.selectionModel().selectedRows()]))
         self.export_btn.clicked.connect(self.save_df_file_dialog)
         self.tabWidget.currentChanged.connect(lambda index: self.on_computation_tab_clicked() if index==1 else None)
+
+
+
+
+
+        self.loader_label = QtWidgets.QLabel(self.centralwidget)
+        # self.label.setGeometry(QtCore.QRect(0, 0, 0, 0))
+        
+        self.loader_label.setMinimumSize(QtCore.QSize(250, 250))
+        self.loader_label.setMaximumSize(QtCore.QSize(250, 250))
+  
+        # Loading the GIF
+        self.movie = QMovie("ui/loader.gif")
+        self.loader_label.setMovie(self.movie)
+  
+        self.movie.start()
+        self.loader_label.setVisible(False)
+
+    def resizeEvent(self, event):
+          #  super(Ui_MainWindow, self).resizeEvent(event)
+           super(QMainWindow, self).resizeEvent(event)
+           self.move_loader()
+
+    def move_loader(self):
+      self.loader_label.move(int(self.size().width()/2), int(self.size().height()/2)-125)
+      pass
+
 
     def add_df(self, df, switch = False):
         self.dfs.append(df)
@@ -162,7 +215,15 @@ class Window(QMainWindow, Ui_MainWindow):
        self.curr_df = model_index.row()
        if self.df_models[self.curr_df] is None or {k:v for k, v in self.get_setup_params().items() if k in self.dfs[self.curr_df].metadata} != self.dfs[self.curr_df].metadata:
           self.dfs[self.curr_df].metadata = {k:v for k, v in self.get_setup_params().items() if k in self.dfs[self.curr_df].metadata}
-          self.df_models[self.curr_df] = DataFrameModel(self.dfs[self.curr_df].get_df().reset_index(drop=True))
-       self.tableView.setModel(self.df_models[self.curr_df])
+          self.loader_label.setVisible(True)
+          self.process = GetDataframe(self.dfs[self.curr_df])
+          def dataframe_ready(df):
+             self.df_models[self.curr_df] = DataFrameModel(df)
+             self.tableView.setModel(self.df_models[self.curr_df])
+             self.loader_label.setVisible(False)
+          self.process.dfcomputed.connect(dataframe_ready)
+          self.process.start()
+       else:
+        self.tableView.setModel(self.df_models[self.curr_df])
 
 
