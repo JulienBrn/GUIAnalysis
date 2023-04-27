@@ -192,8 +192,8 @@ class InputDataDF:
 
       
   
-  def view_items(self, canvas, row_indices):
-     pass
+  # def view_items(self, canvas, row_indices):
+  #    pass
   
 
 

@@ -46,7 +46,7 @@ class CleanDataDF:
       signal_append = self._dataframe.copy().drop(columns=["clean_bounds", "cleaned_signal", "signal", "signal_type"]+list(clean_params.keys()))
       signal_append["signal"] = self._dataframe["cleaned_signal"]
       signal_append["signal_type"] = self._dataframe["signal_type"]+"_cleaned"
-      self.step_signal["clean"] = pd.concat([signal_df, signal_append], ignore_index=True)
+      self.step_signal["clean"] = signal_append
       self.invalidated = False
     return self._dataframe
 
@@ -58,8 +58,8 @@ class CleanDataDF:
 
       
   
-  def view_items(self, canvas, row_indices):
-     pass
+  # def view_items(self, canvas, row_indices):
+  #    pass
   
 
 

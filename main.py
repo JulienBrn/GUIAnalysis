@@ -33,6 +33,7 @@ from clean_df import CleanDataDF
 from lfp_df import LFPDataDF
 from bua_df import BUADataDF
 from pwelch_df import pwelchDataDF
+from spike_continuous_df import SpikeContinuousDataDF
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -41,11 +42,13 @@ if __name__ == "__main__":
     clean_df = CleanDataDF(computation_m, step_signals, input_df)
     lfp_df = LFPDataDF(computation_m, step_signals, clean_df)
     bua_df = BUADataDF(computation_m, step_signals, clean_df)
+    spike_continuous_df = SpikeContinuousDataDF(computation_m, step_signals, input_df)
     pwelch_df = pwelchDataDF(computation_m, step_signals, lfp_df, bua_df)
     win.add_df(input_df)
     win.add_df(clean_df)
     win.add_df(lfp_df)
     win.add_df(bua_df)
+    win.add_df(spike_continuous_df)
     win.add_df(pwelch_df)
     win.show()
     sys.exit(app.exec())

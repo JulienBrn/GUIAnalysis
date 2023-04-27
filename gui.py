@@ -69,7 +69,10 @@ class ViewResult(QThread):
       self.canvas = canvas
       self.rows = rows
    def run(self):
-      self.df.view_item(self.canvas, self.rows)
+      if len(self.rows.index) == 1 or not hasattr(self.df, "view_items"):
+        self.df.view_item(self.canvas, self.rows.iloc[0, :])
+      else:
+        self.df.view_items(self.canvas, self.rows)
       self.ready.emit()
 
 class Window(QMainWindow, Ui_MainWindow):
@@ -110,7 +113,6 @@ class Window(QMainWindow, Ui_MainWindow):
               self.process.start()
           
         def view(indices):
-           if len(indices) == 1:
               if not self.mpl.canvas.ax is None:
                 if hasattr(self.mpl.canvas.ax, "flat"):
                   for ax in self.mpl.canvas.ax.flat:
@@ -118,7 +120,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 else: 
                    self.mpl.canvas.ax.remove()
                 self.mpl.canvas.draw()
-              self.process = ViewResult(self.dfs[self.curr_df], self.mpl.canvas, self.tableView.model()._dataframe.iloc[indices[0], :])
+              self.process = ViewResult(self.dfs[self.curr_df], self.mpl.canvas, self.tableView.model()._dataframe.iloc[indices, :])
               self.tabWidget.setCurrentWidget(self.result_tab)
               self.loader_label.setVisible(True)
               def when_ready():

@@ -37,7 +37,7 @@ class pwelchDataDF:
     if self.invalidated:
       self.lfpDF.get_df()
       self.buaDF.get_df()
-      signal_df = self.step_signal["bua"]
+      signal_df = pd.concat([self.step_signal["bua"], self.step_signal["lfp"]], ignore_index=True)
       pwelch_params = {key[7:].replace(".", "_"):parse_param(val) for key,val in self.metadata.items() if "pwelch." in key}
       self._dataframe = _get_df(self.computation_m, signal_df, pwelch_params)
       self.invalidated = False
@@ -53,12 +53,19 @@ class pwelchDataDF:
     canvas.ax.plot(x, y)
     canvas.ax.set_xlabel("Frequency (Hz)")
     canvas.ax.set_ylabel("Amplitude (?)")
-    
+    canvas.ax.set_xlim(3, 60)
 
       
   
-  def view_items(self, canvas, row_indices):
-     pass
+  def view_items(self, canvas, rows):
+    canvas.ax = canvas.fig.subplots(1)
+    for i in range(len(rows.index)):
+      y = rows["welch_pow"].iat[i].get_result()
+      x = rows["welch_f"].iat[i].get_result()
+      canvas.ax.plot(x, y)
+    canvas.ax.set_xlabel("Frequency (Hz)")
+    canvas.ax.set_ylabel("Amplitude (?)")
+    canvas.ax.set_xlim(3, 60)
   
 
 

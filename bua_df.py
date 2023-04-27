@@ -45,7 +45,7 @@ class BUADataDF:
       signal_append["signal"] = self._dataframe["bua_sig"]
       signal_append["signal_type"] = self._dataframe["signal_type"].str.replace("raw_", "bua_").str.replace("mua_", "bua_")
       signal_append["signal_fs"] = self._dataframe["bua_fs"]
-      self.step_signal["bua"] = pd.concat([signal_df, signal_append], ignore_index=True)
+      self.step_signal["bua"] = signal_append
       self.invalidated = False
     return self._dataframe
 
@@ -69,8 +69,8 @@ class BUADataDF:
 
       
   
-  def view_items(self, canvas, row_indices):
-     pass
+  # def view_items(self, canvas, row_indices):
+  #    pass
   
 
 
@@ -89,45 +89,3 @@ def _get_df(computation_m, signal_df, bua_params):
 
   return bua_df
 
-def create_summary_figure(raw, cleaned, fs, bounds, down_sampling, deviation_factor, f):
-  summary = bounds
-  df=pd.DataFrame()
-
-  df["raw"] = raw
-  df["cleaned"] = cleaned
-  df["t"] = df.index/fs
-
-  mean = raw.mean()
-  rawmin= raw.min()
-  rawmax= raw.max()
-
-  cleaned_mean = cleaned.mean()
-  cleaned_std = cleaned.std()
-  deviation = deviation_factor
-  std = raw.std()
-  ds= down_sampling
-
-
-  ax = f.subplots(3)
-
-  ax[0].plot(df["t"][::ds], df["raw"][::ds], label="raw", color="C0")
-  ax[0].legend(loc='upper right')
-  ax[0].set_xlabel("time (s)")
-  ax[0].set_ylabel("signal value")
-
-  ax[1].plot(df["t"][::ds], df["raw"][::ds], label="raw", color="C0")
-  ax[1].hlines([mean-std*deviation, mean+std*deviation], 0, df["t"].iat[-1], color="C1", label="raw mean +/- {}*std".format(deviation))
-  ax[1].hlines([cleaned_mean-cleaned_std*deviation, cleaned_mean+cleaned_std*deviation], 0, df["t"].iat[-1], color="C4", label="cleaned mean +/- {}*std".format(deviation))
-
-  ax[1].vlines(summary["start"]/fs, rawmin, rawmax, color="C2", label="start artefact")
-  ax[1].vlines(summary["end"]/fs, rawmin, rawmax, color="C3", label="end artefact")
-  ax[1].legend(loc='upper right')
-  ax[1].set_xlabel("time (s)")
-  ax[1].set_ylabel("signal value")
-
-
-  ax[2].plot(df["t"][::ds], df["cleaned"][::ds], color="C1", label="cleaned")
-  ax[2].legend(loc='upper right')
-  ax[2].set_xlabel("time (s)")
-  ax[2].set_ylabel("signal value")
-  return ax
