@@ -23,15 +23,30 @@ computation_m = Manager("./cache/computation")
 dataframe_manager = Manager("./cache/dataframes")
 
 
+step_signals = {}
+
 
 from gui import Window
 from PyQt5.QtWidgets import QApplication
 from input_df import InputDataDF
+from clean_df import CleanDataDF
+from lfp_df import LFPDataDF
+from bua_df import BUADataDF
+from pwelch_df import pwelchDataDF
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     win = Window() 
-    win.add_df(InputDataDF(dataframe_manager, computation_m))
+    input_df = InputDataDF(dataframe_manager, computation_m, step_signals)
+    clean_df = CleanDataDF(computation_m, step_signals, input_df)
+    lfp_df = LFPDataDF(computation_m, step_signals, clean_df)
+    bua_df = BUADataDF(computation_m, step_signals, clean_df)
+    pwelch_df = pwelchDataDF(computation_m, step_signals, lfp_df, bua_df)
+    win.add_df(input_df)
+    win.add_df(clean_df)
+    win.add_df(lfp_df)
+    win.add_df(bua_df)
+    win.add_df(pwelch_df)
     win.show()
     sys.exit(app.exec())
 

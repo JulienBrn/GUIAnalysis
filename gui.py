@@ -112,8 +112,11 @@ class Window(QMainWindow, Ui_MainWindow):
         def view(indices):
            if len(indices) == 1:
               if not self.mpl.canvas.ax is None:
-                for ax in self.mpl.canvas.ax.flat:
-                  ax.remove()
+                if hasattr(self.mpl.canvas.ax, "flat"):
+                  for ax in self.mpl.canvas.ax.flat:
+                    ax.remove()
+                else: 
+                   self.mpl.canvas.ax.remove()
                 self.mpl.canvas.draw()
               self.process = ViewResult(self.dfs[self.curr_df], self.mpl.canvas, self.tableView.model()._dataframe.iloc[indices[0], :])
               self.tabWidget.setCurrentWidget(self.result_tab)
@@ -123,6 +126,8 @@ class Window(QMainWindow, Ui_MainWindow):
                  self.loader_label.setVisible(False)
               self.process.ready.connect(when_ready)
               self.process.start()
+              # self.process.run()
+              # when_ready()
 
         self.compute.clicked.connect(lambda: compute([i.row() for i in self.tableView.selectionModel().selectedRows()]))
         self.view.clicked.connect(lambda: view([i.row() for i in self.tableView.selectionModel().selectedRows()]))
@@ -183,10 +188,15 @@ class Window(QMainWindow, Ui_MainWindow):
           # self.curr_df = len(self.dfs) -1
           # self.tableView.setModel(self.df_models[self.curr_df])
     def on_computation_tab_clicked(self):
-       logger.info("called")
-       if self.curr_df is None:
-          self.curr_df = 0
-       self.on_listView_clicked(self.listView.model().index(self.curr_df, 0))
+      for i in range(len(self.df_models)):
+        if self.df_models[i] is None or {k:v for k, v in self.get_setup_params().items() if k in self.dfs[i].metadata} != self.dfs[i].metadata:
+          self.dfs[i].metadata = {k:v for k, v in self.get_setup_params().items() if k in self.dfs[i].metadata}
+          self.dfs[i].invalidated=True
+
+
+      if self.curr_df is None:
+        self.curr_df = 0
+      self.on_listView_clicked(self.listView.model().index(self.curr_df, 0))
 
     def get_setup_params(self):
       params = {}
@@ -213,8 +223,8 @@ class Window(QMainWindow, Ui_MainWindow):
     def on_listView_clicked(self, model_index):
        self.listView.setCurrentIndex(model_index)
        self.curr_df = model_index.row()
-       if self.df_models[self.curr_df] is None or {k:v for k, v in self.get_setup_params().items() if k in self.dfs[self.curr_df].metadata} != self.dfs[self.curr_df].metadata:
-          self.dfs[self.curr_df].metadata = {k:v for k, v in self.get_setup_params().items() if k in self.dfs[self.curr_df].metadata}
+       if self.dfs[self.curr_df].invalidated:
+          # self.dfs[self.curr_df].metadata = {k:v for k, v in self.get_setup_params().items() if k in self.dfs[self.curr_df].metadata}
           self.loader_label.setVisible(True)
           self.process = GetDataframe(self.dfs[self.curr_df])
           def dataframe_ready(df):

@@ -147,25 +147,37 @@ def mk_rat_input(base_folder , rescan) -> pd.DataFrame :
 
 class InputDataDF:
    
-  def __init__(self, dataframe_manager, computation_m):
+  def __init__(self, dataframe_manager, computation_m, step_signals):
      self.dataframe_manager = dataframe_manager
      self.computation_m = computation_m
      self.metadata = {
       "input.human.base_folder": "/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/HumanData4review",
       "input.human.rescan": "False",
+      "input.human.size": "3",
       "input.monkey.base_folder": "/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/MarcAnalysis/Inputs/MonkeyData4Review",
       "input.monkey.rescan": "False",
+      "input.monkey.size": "3",
       "input.rat.base_folder": "/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/NicoAnalysis/Rat_Data",
       "input.rat.rescan": "False",
-    }
-    #  self._dataframe = self._get_df(dataframe_manager, computation_m)
+      "input.rat.size": "3",
+     }
+     self.invalidated = True
+     self.step_signals = step_signals
 
   
   name = "inputs"
   result_columns = ["signal"]
+  invalidated = True
+
+
 
   def get_df(self):
-     return _get_df(self.dataframe_manager, self.computation_m, self.metadata)
+     signal_cols = ["Species", "Condition", "Subject", "Date", "Session", "SubSessionInfo", "SubSessionInfoType",  "Structure", "Channel or Neuron", "signal_type", "signal_fs", "signal"]
+     if self.invalidated:
+        self._dataframe = _get_df(self.dataframe_manager, self.computation_m, self.metadata)
+        self.step_signals["input"] = self._dataframe.copy()[signal_cols]
+        self.invalidated = False
+     return self._dataframe
   
   def view_item(self, canvas, row):
     
@@ -203,7 +215,8 @@ def _get_df(dataframe_manager, computation_m, metadata):
      monkey_input_handle.invalidate_all()
 
   monkey_input = monkey_input_handle.get_result().drop(columns=["path", "filename", "ext"])
-  
+  if metadata["input.monkey.size"].isdigit():
+     monkey_input=monkey_input.iloc[0:int(metadata["input.monkey.size"]), :]
   
 
   logger.info("Getting human_df")
@@ -216,7 +229,8 @@ def _get_df(dataframe_manager, computation_m, metadata):
   if metadata["input.human.rescan"] == "True":
      human_input_handle.invalidate_all()
   human_input = human_input_handle.get_result().drop(columns=["path", "filename", "ext", "Date_HT", "Electrode_Depth"])
-
+  if metadata["input.human.size"].isdigit():
+     human_input=human_input.iloc[0:int(metadata["input.human.size"]), :]
 
   logger.info("Getting rat_df")
   if not metadata["input.rat.rescan"] in ["True", "False"]:
@@ -229,6 +243,8 @@ def _get_df(dataframe_manager, computation_m, metadata):
   if metadata["input.rat.rescan"] == "True":
      rat_input_handle.invalidate_all()
   rat_input = rat_input_handle.get_result().drop(columns=["path", "filename", "ext"])
+  if metadata["input.human.size"].isdigit():
+     rat_input=rat_input.iloc[0:int(metadata["input.rat.size"]), :]
 
   input_df = pd.concat([monkey_input, human_input, rat_input], ignore_index=True)[INPUT_Columns]
 
