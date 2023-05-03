@@ -58,15 +58,89 @@ class pwelchDataDF:
       
   
   def view_items(self, canvas, rows):
-    canvas.ax = canvas.fig.subplots(1)
-    for i in range(len(rows.index)):
-      y = rows["welch_pow"].iat[i].get_result()
-      x = rows["welch_f"].iat[i].get_result()
-      canvas.ax.plot(x, y)
-    canvas.ax.set_xlabel("Frequency (Hz)")
-    canvas.ax.set_ylabel("Amplitude (?)")
-    canvas.ax.set_xlim(3, 60)
-  
+    if len(rows.index) < 6:
+      mode=0
+    elif len(rows["Species"].unique())==1:
+      mode =1
+    else:
+      mode=2
+    if mode == 0:
+      canvas.ax = canvas.fig.subplots(1)
+      for i in range(len(rows.index)):
+        label_dict = {k:v for k,v in rows.iloc[i, :].to_dict().items() if not "__" in k and not "SubSession" in k and not isinstance(v, RessourceHandle)}
+        label = ",".join(["{}={}".format(k, v) for k,v in label_dict.items()])
+        y = rows["welch_pow"].iat[i].get_result()
+        x = rows["welch_f"].iat[i].get_result()
+        canvas.ax.plot(x, y)
+      canvas.ax.set_xlabel("Frequency (Hz)")
+      canvas.ax.set_ylabel("Amplitude (?)")
+      canvas.ax.set_xlim(3, 60)
+      canvas.ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.05), fancybox=True, shadow=True)
+      canvas.fig.tight_layout()
+    elif mode ==1 or mode==2:
+      df = rows.copy().reset_index()
+      df["welch_pow"] = df.apply(lambda row: scipy.stats.zscore(row["welch_pow"].get_result()), axis=1, result_type="reduce")
+      df["aggregation_type"] = "plot"
+      def compute_info(df):
+        x_coords = [v.get_result() for v in df["welch_f"]]
+        if all(np.array_equal(x, x_coords[0]) for x in x_coords):
+          y_vals = [v for v in df["welch_pow"]]
+          y_avg = np.mean(y_vals, axis=0)
+          y_med = np.median(y_vals, axis=0)
+          res = pd.DataFrame([[x_coords[0],  y_avg, "avg"], [x_coords[0],  y_med, "median"]], columns=["welch_f", "welch_pow", "aggregation_type"])
+          # res["welch_f"] = x_coords[0]
+          # res["welch_pow"] = y_avg
+          # res["aggregation_type"] = "avg"
+          return res
+          # print(x_coords[0].shape, y_avg.shape)
+        else:
+          mdf = pd.DataFrame()
+          mdf["welch_f"] = df["welch_f"]
+          mdf["welch_pow"] = df["welch_pow"]
+          mdf["min"] = mdf.apply(lambda row: np.amin(row["welch_f"].get_result()), axis=1)
+          mdf["max"] = mdf.apply(lambda row: np.amax(row["welch_f"].get_result()), axis=1)
+
+          max_x = mdf["max"].min()
+          min_x = mdf["min"].max()
+          logger.info("minx = {}, max_x={}".format(min_x, max_x))
+          new_x = np.arange(min_x, max_x, (max_x-min_x)/10000)
+          mdf["resampled"] = mdf.apply(lambda row: np.interp(new_x, row["welch_f"].get_result(), row["welch_pow"]) if np.all(np.diff(row["welch_f"].get_result()) > 0) else np.nan, axis=1)
+          y_vals = [v for v in mdf["resampled"]]
+          y_avg = np.mean(y_vals, axis=0)
+          y_med = np.median(y_vals, axis=0)
+          # debugdf = pd.DataFrame()
+          # debugdf["f"] = new_x
+          # for i in range(len(mdf.index)):
+          #   debugdf["pow" + str(i)] = mdf["resampled"].iat[i]
+          # debugdf["yavg"] = y_avg
+          # debugdf["ymed"] = y_med
+          # toolbox.df_loader.save("debug.tsv", debugdf)
+          res = pd.DataFrame([[new_x,  y_avg, "avg"], [new_x,  y_med, "median"]], columns=["welch_f", "welch_pow", "aggregation_type"])
+          return res
+      r = df.groupby(["Species", "Structure", "signal_type", "Condition"]).apply(compute_info).reset_index()
+      if mode ==1:
+        df = pd.concat([df, r], ignore_index=True)
+        # logger.info(df.to_string())
+        toolbox.add_draw_metadata(df, col_group=["Species", "Structure"], row_group=["signal_type", "Condition"], color_group=["aggregation_type"])
+        # logger.info(df.to_string())
+        p = toolbox.prepare_figures2(df, [canvas.fig], xlim=[3, 60])
+        # p = toolbox.prepare_figures2(df, [canvas.fig])
+        # df=df[(df["Structure"].isin(["STN", "STR", "ECoG"])) & (df["Condition"]=="CTL") ]
+        # bugdf = df[["Structure", "signal_type", "Condition", "Row_label", "Column_label", "Column"]]
+        # toolbox.df_loader.save("bugdf.tsv", bugdf)
+        p.plot2(df, x="welch_f", y="welch_pow", use_zscore=False)
+      elif mode ==2:
+        df = r[r["aggregation_type"]=="median"].reset_index(drop=True)
+        # logger.info(df.to_string())
+        toolbox.add_draw_metadata(df, col_group=["Species","aggregation_type"], row_group=["signal_type"], color_group=[ "Structure", "Condition"])
+        # logger.info(df.to_string())
+        p = toolbox.prepare_figures2(df, [canvas.fig], xlim=[3, 60], ylim=[-1, 8])
+        # p = toolbox.prepare_figures2(df, [canvas.fig])
+        # df=df[(df["Structure"].isin(["STN", "STR", "ECoG"])) & (df["Condition"]=="CTL") ]
+        # bugdf = df[["Structure", "signal_type", "Condition", "Row_label", "Column_label", "Column"]]
+        # toolbox.df_loader.save("bugdf.tsv", bugdf)
+        p.plot2(df, x="welch_f", y="welch_pow", use_zscore=False)
+      
 
 
 def _get_df(computation_m, signal_df, pwelch_params):
@@ -78,49 +152,7 @@ def _get_df(computation_m, signal_df, pwelch_params):
   def pwelch(signal, signal_fs, window_duration):
     return scipy.signal.welch(signal, signal_fs, nperseg=window_duration*signal_fs)
 
+  tqdm.pandas(desc="Declaring pwelch")
   pwelch_df = mk_block(pwelch_df, ["signal", "signal_fs", "window_duration"], pwelch, 
                       {0: (np_loader, "welch_f", True), 1: (np_loader, "welch_pow", True)}, computation_m)
   return pwelch_df
-
-def create_summary_figure(raw, cleaned, fs, bounds, down_sampling, deviation_factor, f):
-  summary = bounds
-  df=pd.DataFrame()
-
-  df["raw"] = raw
-  df["cleaned"] = cleaned
-  df["t"] = df.index/fs
-
-  mean = raw.mean()
-  rawmin= raw.min()
-  rawmax= raw.max()
-
-  cleaned_mean = cleaned.mean()
-  cleaned_std = cleaned.std()
-  deviation = deviation_factor
-  std = raw.std()
-  ds= down_sampling
-
-
-  ax = f.subplots(3)
-
-  ax[0].plot(df["t"][::ds], df["raw"][::ds], label="raw", color="C0")
-  ax[0].legend(loc='upper right')
-  ax[0].set_xlabel("time (s)")
-  ax[0].set_ylabel("signal value")
-
-  ax[1].plot(df["t"][::ds], df["raw"][::ds], label="raw", color="C0")
-  ax[1].hlines([mean-std*deviation, mean+std*deviation], 0, df["t"].iat[-1], color="C1", label="raw mean +/- {}*std".format(deviation))
-  ax[1].hlines([cleaned_mean-cleaned_std*deviation, cleaned_mean+cleaned_std*deviation], 0, df["t"].iat[-1], color="C4", label="cleaned mean +/- {}*std".format(deviation))
-
-  ax[1].vlines(summary["start"]/fs, rawmin, rawmax, color="C2", label="start artefact")
-  ax[1].vlines(summary["end"]/fs, rawmin, rawmax, color="C3", label="end artefact")
-  ax[1].legend(loc='upper right')
-  ax[1].set_xlabel("time (s)")
-  ax[1].set_ylabel("signal value")
-
-
-  ax[2].plot(df["t"][::ds], df["cleaned"][::ds], color="C1", label="cleaned")
-  ax[2].legend(loc='upper right')
-  ax[2].set_xlabel("time (s)")
-  ax[2].set_ylabel("signal value")
-  return ax

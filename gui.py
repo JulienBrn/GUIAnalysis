@@ -1,4 +1,4 @@
-from toolbox import Manager, np_loader, df_loader, float_loader, matlab_loader, matlab73_loader, read_folder_as_database, mk_block, replace_artefacts_with_nans2
+from toolbox import json_loader, RessourceHandle, Manager, np_loader, df_loader, float_loader, matlab_loader, matlab73_loader, read_folder_as_database, mk_block, replace_artefacts_with_nans2
 import logging, beautifullogger, pathlib, pandas as pd, toolbox, numpy as np, scipy, h5py, re, ast, sys
 from tqdm import tqdm
 import statsmodels.api as sm
@@ -30,7 +30,7 @@ from multiprocessing import Process
 from threading import Thread
 import tkinter
 from PyQt5.QtCore import QThread, pyqtSignal
-
+from mplwidget import MplCanvas
 
 class GetResult(QThread):
    progress = pyqtSignal(int)
@@ -43,7 +43,7 @@ class GetResult(QThread):
       model = self.model
       indices = self.indices
       df = model._dataframe
-      for index in indices:
+      for index in tqdm(indices):
          for colind, col in enumerate(self.cols):
             if isinstance(df[col].iat[index], toolbox.RessourceHandle):
                df[col].iat[index].get_result()
@@ -76,6 +76,7 @@ class ViewResult(QThread):
       self.ready.emit()
 
 class Window(QMainWindow, Ui_MainWindow):
+    setup_ready = pyqtSignal(dict)
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
@@ -88,7 +89,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.tableView.setSortingEnabled(True)
         self.splitter.setStretchFactor(1,6)
         self.progressBar.setValue(0)
-        self.toolbar = NavigationToolbar(self.mpl.canvas, self.mpl)
+        self.toolbar = NavigationToolbar(self.mpl.canvas, parent=self.result_tab)
 
 
         self.setup_model = QStandardItemModel()
@@ -113,29 +114,61 @@ class Window(QMainWindow, Ui_MainWindow):
               self.process.start()
           
         def view(indices):
-              if not self.mpl.canvas.ax is None:
-                if hasattr(self.mpl.canvas.ax, "flat"):
-                  for ax in self.mpl.canvas.ax.flat:
-                    ax.remove()
-                else: 
-                   self.mpl.canvas.ax.remove()
-                self.mpl.canvas.draw()
-              self.process = ViewResult(self.dfs[self.curr_df], self.mpl.canvas, self.tableView.model()._dataframe.iloc[indices, :])
-              self.tabWidget.setCurrentWidget(self.result_tab)
-              self.loader_label.setVisible(True)
-              def when_ready():
-                 self.mpl.canvas.draw()
-                 self.loader_label.setVisible(False)
-              self.process.ready.connect(when_ready)
-              self.process.start()
+          # if not self.mpl.canvas.ax is None:
+          #   if hasattr(self.mpl.canvas.ax, "flat"):
+          #     for ax in self.mpl.canvas.ax.flat:
+          #       ax.remove()
+          #   else: 
+          #       self.mpl.canvas.ax.remove()
+          #   self.mpl.canvas.draw()
+          self.toolbar.setParent(None)
+          self.mpl.reset()
+          self.toolbar = NavigationToolbar(self.mpl.canvas, parent=self.result_tab)
+          self.process = ViewResult(self.dfs[self.curr_df], self.mpl.canvas, self.tableView.model()._dataframe.iloc[indices, :])
+          self.tabWidget.setCurrentWidget(self.result_tab)
+          self.loader_label.setVisible(True)
+          def when_ready():
+              self.mpl.canvas.draw()
+              
+              self.toolbar.update()
+              self.loader_label.setVisible(False)
+          self.process.ready.connect(when_ready)
+          self.process.start()
               # self.process.run()
               # when_ready()
 
+        def invalidate(indices):
+           for i in tqdm(indices):
+              for col in self.dfs[self.curr_df].result_columns:
+                val = self.tableView.model()._dataframe[col].iat[i]
+                if isinstance(val, RessourceHandle):
+                  val.invalidate_all()
+           self.tableView.model().dataChanged.emit(
+            self.tableView.model().createIndex(0,0), self.tableView.model().createIndex(len(self.tableView.model()._dataframe.index), len(self.tableView.model()._dataframe.columns)), (QtCore.Qt.EditRole,)
+           ) 
+
+
+        self.invalidate.clicked.connect(lambda: invalidate([i.row() for i in self.tableView.selectionModel().selectedRows()]))
         self.compute.clicked.connect(lambda: compute([i.row() for i in self.tableView.selectionModel().selectedRows()]))
         self.view.clicked.connect(lambda: view([i.row() for i in self.tableView.selectionModel().selectedRows()]))
         self.export_btn.clicked.connect(self.save_df_file_dialog)
         self.tabWidget.currentChanged.connect(lambda index: self.on_computation_tab_clicked() if index==1 else None)
 
+        def load_config():
+           path, ok = QFileDialog.getOpenFileName(self, caption="Setup parameters to load from", filter="*.json")
+           try:
+              self.set_setup_params(json_loader.load(path))
+           except:
+              logger.error("Impossible to load configuration file")
+        self.load_params.clicked.connect(load_config)
+
+        def export_config():
+           path, ok = QFileDialog.getSaveFileName(self, caption="Save setup parameters to", filter="*.json")
+           try:
+              json_loader.save(path, self.get_setup_params())
+           except BaseException as e:
+              logger.error("Impossible to save configuration :{}\n".format(e))
+        self.export_params.clicked.connect(export_config)
 
 
 
@@ -189,9 +222,12 @@ class Window(QMainWindow, Ui_MainWindow):
           
           # self.curr_df = len(self.dfs) -1
           # self.tableView.setModel(self.df_models[self.curr_df])
+       
     def on_computation_tab_clicked(self):
+      setup_params = self.get_setup_params()
+      self.setup_ready.emit(setup_params)
       for i in range(len(self.df_models)):
-        if self.df_models[i] is None or {k:v for k, v in self.get_setup_params().items() if k in self.dfs[i].metadata} != self.dfs[i].metadata:
+        if {k:v for k, v in setup_params.items() if k in self.dfs[i].metadata} != self.dfs[i].metadata:
           self.dfs[i].metadata = {k:v for k, v in self.get_setup_params().items() if k in self.dfs[i].metadata}
           self.dfs[i].invalidated=True
 
@@ -200,6 +236,22 @@ class Window(QMainWindow, Ui_MainWindow):
         self.curr_df = 0
       self.on_listView_clicked(self.listView.model().index(self.curr_df, 0))
 
+    def set_setup_params(self, params):
+      for p, val in params.items():
+          keys = p.split(".")
+          curr = self.setup_params
+          for k in keys:
+            if not k in curr[2]:
+              curr[0].appendRow([QStandardItem(k), QStandardItem("")])
+              if not curr[1] is None:
+                curr[1].setEditable(False)
+              curr[0].child(curr[0].rowCount() - 1, 1).setEditable(True)
+              curr[0].child(curr[0].rowCount() - 1, 0).setEditable(False)
+              curr[2][k]=[curr[0].child(curr[0].rowCount() - 1, 0), curr[0].child(curr[0].rowCount() - 1, 1), {}]
+            curr = curr[2][k]
+          curr[1].setText(str(val))
+      self.treeView.expandAll()
+       
     def get_setup_params(self):
       params = {}
       def rec_print(root, prefix):
@@ -236,6 +288,8 @@ class Window(QMainWindow, Ui_MainWindow):
           self.process.dfcomputed.connect(dataframe_ready)
           self.process.start()
        else:
-        self.tableView.setModel(self.df_models[self.curr_df])
+          self.df_models[self.curr_df] = DataFrameModel(self.dfs[self.curr_df].get_df())
+          self.tableView.setModel(self.df_models[self.curr_df])
+          self.tableView.setModel(self.df_models[self.curr_df])
 
 

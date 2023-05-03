@@ -84,6 +84,7 @@ def _get_df(computation_m, signal_df, bua_params):
     bua, out_fs = toolbox.extract_mu(signal, signal_fs, bandpass_low_freq, bandpass_high_freq, lowpass_freq, out_fs, passes_order)
     return (bua, out_fs)
 
+  tqdm.pandas(desc="Declaring bua signals")
   bua_df = mk_block(bua_df, ["signal", "signal_fs"] + list(bua_params.keys()), extract_bua, 
              {0: (np_loader, "bua_sig", True), 1: (float_loader, "bua_fs", True)}, computation_m) 
 

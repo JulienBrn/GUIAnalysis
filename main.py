@@ -1,4 +1,4 @@
-from toolbox import Manager, np_loader, df_loader, float_loader, matlab_loader, matlab73_loader, read_folder_as_database, mk_block, replace_artefacts_with_nans2
+from toolbox import Manager, json_loader, np_loader, df_loader, float_loader, matlab_loader, matlab73_loader, read_folder_as_database, mk_block, replace_artefacts_with_nans2
 import logging, beautifullogger, pathlib, pandas as pd, toolbox, numpy as np, scipy, h5py, re, ast, sys
 from tqdm import tqdm
 import statsmodels.api as sm
@@ -32,8 +32,11 @@ from input_df import InputDataDF
 from clean_df import CleanDataDF
 from lfp_df import LFPDataDF
 from bua_df import BUADataDF
-from pwelch_df import pwelchDataDF
+
 from spike_continuous_df import SpikeContinuousDataDF
+from pwelch_df import pwelchDataDF
+from coherence_df import coherenceDataDF
+from correlation_df import correlationDataDF
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -44,12 +47,19 @@ if __name__ == "__main__":
     bua_df = BUADataDF(computation_m, step_signals, clean_df)
     spike_continuous_df = SpikeContinuousDataDF(computation_m, step_signals, input_df)
     pwelch_df = pwelchDataDF(computation_m, step_signals, lfp_df, bua_df)
+    coherence_df = coherenceDataDF(computation_m, step_signals, lfp_df, bua_df, spike_continuous_df)
+    correlation_df = correlationDataDF(computation_m, step_signals, spike_continuous_df)
     win.add_df(input_df)
     win.add_df(clean_df)
     win.add_df(lfp_df)
     win.add_df(bua_df)
     win.add_df(spike_continuous_df)
     win.add_df(pwelch_df)
-    win.show()
+    win.add_df(coherence_df)
+    win.add_df(correlation_df)
+    if pathlib.Path("setup_params.json").exists():
+        win.set_setup_params(json_loader.load(pathlib.Path("setup_params.json")))
+    win.setup_ready.connect(lambda d: json_loader.save(pathlib.Path("setup_params.json"), d))
+    win.showMaximized()
     sys.exit(app.exec())
 

@@ -94,7 +94,7 @@ def mk_rat_input(base_folder , rescan) -> pd.DataFrame :
       axis=1, result_type="expand"
    )
    df["SubSessionInfoType"] = "order"
-
+   df["Structure"] = df.apply(lambda row: row["Structure"] if row["Structure"]!="Striatum" else "STR", axis=1)
    rat_raw_regexs = [
          re.compile("(?P<sln>.*)_Probe(?P<channel>.*)"),
          re.compile("(?P<sln>.*)_(?P<channel>EEG)ipsi", re.IGNORECASE),
@@ -242,8 +242,13 @@ def _get_df(dataframe_manager, computation_m, metadata):
   
   if metadata["input.rat.rescan"] == "True":
      rat_input_handle.invalidate_all()
+     rat_input_handle2 = dataframe_manager.declare_computable_ressource(
+        mk_rat_input, {"rescan": False, "base_folder": metadata["input.rat.base_folder"]}, 
+        df_loader, "rat_input_df", True
+    )
+     rat_input_handle2.invalidate_all()
   rat_input = rat_input_handle.get_result().drop(columns=["path", "filename", "ext"])
-  if metadata["input.human.size"].isdigit():
+  if metadata["input.rat.size"].isdigit():
      rat_input=rat_input.iloc[0:int(metadata["input.rat.size"]), :]
 
   input_df = pd.concat([monkey_input, human_input, rat_input], ignore_index=True)[INPUT_Columns]

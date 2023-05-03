@@ -39,11 +39,14 @@ class LFPDataDF:
       signal_df = self.step_signal["clean"]
       lfp_params = {key[4:].replace(".", "_"):parse_param(val) for key,val in self.metadata.items() if "lfp." in key}
       self._dataframe = _get_df(self.computation_m, signal_df, lfp_params)
-      signal_append = self._dataframe.copy().drop(columns=["lfp_sig", "lfp_fs", "signal", "signal_type", "signal_fs"]+list(lfp_params.keys()))
-      signal_append["signal"] = self._dataframe["lfp_sig"]
-      signal_append["signal_type"] = self._dataframe["signal_type"].str.replace("raw_", "lfp_", regex=False)
-      signal_append["signal_fs"] = self._dataframe["lfp_fs"]
-      self.step_signal["lfp"] = signal_append
+      if len(self._dataframe.index) !=0:
+        signal_append = self._dataframe.copy().drop(columns=["lfp_sig", "lfp_fs", "signal", "signal_type", "signal_fs"]+list(lfp_params.keys()))
+        signal_append["signal"] = self._dataframe["lfp_sig"]
+        signal_append["signal_type"] = self._dataframe["signal_type"].str.replace("raw_", "lfp_", regex=False)
+        signal_append["signal_fs"] = self._dataframe["lfp_fs"]
+        self.step_signal["lfp"] = signal_append
+      else:
+        self.step_signal["lfp"] = pd.DataFrame()
       self.invalidated = False
     return self._dataframe
 
@@ -83,6 +86,7 @@ def _get_df(computation_m, signal_df, lfp_params):
     lfp, out_fs = toolbox.extract_lfp(signal, signal_fs, lowpass_filter_freq, out_fs, lowpass_order)
     return (lfp, out_fs)
   
+  tqdm.pandas(desc="Declaring lfp signals")
   lfp_df = mk_block(lfp_df, ["signal", "signal_fs", "lowpass_filter_freq","out_fs", "lowpass_order"], extract_lfp, 
              {0: (np_loader, "lfp_sig", True), 1: (float_loader, "lfp_fs", True)}, computation_m)
   return lfp_df

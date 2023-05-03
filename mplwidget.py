@@ -17,3 +17,11 @@ class MplWidget(PyQt5.QtWidgets.QWidget):
     self.vbl = PyQt5.QtWidgets.QVBoxLayout()
     self.vbl.addWidget(self.canvas)
     self.setLayout(self.vbl)
+  def reset(self, parent = None):
+    self.canvas = MplCanvas()
+    for i in reversed(range(self.vbl.count())): 
+      widgetToRemove = self.vbl.itemAt(i).widget()
+      self.vbl.removeWidget(widgetToRemove)
+      widgetToRemove.setParent(None)
+    self.vbl.addWidget(self.canvas)
+    # self.setLayout(self.vbl)
