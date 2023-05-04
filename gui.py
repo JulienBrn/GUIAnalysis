@@ -30,7 +30,16 @@ from multiprocessing import Process
 from threading import Thread
 import tkinter
 from PyQt5.QtCore import QThread, pyqtSignal
-from mplwidget import MplCanvas
+from mplwidget import MplCanvas, MplWidget
+
+
+def mk_result_tab():
+   result_tab = QtWidgets.QWidget()
+   verticalLayout_4 = QtWidgets.QVBoxLayout(result_tab)
+   mpl = MplWidget(result_tab)
+   verticalLayout_4.addWidget(mpl)
+   toolbar = NavigationToolbar(mpl.canvas, parent=result_tab)
+   return result_tab, mpl
 
 class GetResult(QThread):
    progress = pyqtSignal(int)
@@ -62,18 +71,33 @@ class GetDataframe(QThread):
       self.dfcomputed.emit(res)
 
 class ViewResult(QThread):
-   ready = pyqtSignal()
-   def __init__(self, df, canvas, rows):
+   ready = pyqtSignal(int)
+   def __init__(self, df, result_tabs, rows):
       super().__init__()
       self.df = df
-      self.canvas = canvas
+      if hasattr(df, "get_nb_figs"):
+         nb_figs = df.get_nb_figs(rows)
+      else:
+         nb_figs = 1
+      self.canvas=[]
+      for i in range(nb_figs):
+         result_tab, mpl = mk_result_tab()
+         self.canvas.append(mpl.canvas)
+         result_tabs.addTab(result_tab, "res"+str(i))
       self.rows = rows
    def run(self):
-      if len(self.rows.index) == 1 or not hasattr(self.df, "view_items"):
-        self.df.view_item(self.canvas, self.rows.iloc[0, :])
+      if hasattr(self.df, "show_figs"):
+         for l in self.df.show_figs(self.rows, self.canvas):
+            logger.info("Emitting {}".format(l))
+            for i in l:
+               self.ready.emit(i)
       else:
-        self.df.view_items(self.canvas, self.rows)
-      self.ready.emit()
+         canvas = self.canvas[0]
+         if len(self.rows.index) == 1 or not hasattr(self.df, "view_items"):
+            self.df.view_item(canvas, self.rows.iloc[0, :])
+         else:
+            self.df.view_items(canvas, self.rows)
+         self.ready.emit(0)
 
 class Window(QMainWindow, Ui_MainWindow):
     setup_ready = pyqtSignal(dict)
@@ -89,8 +113,8 @@ class Window(QMainWindow, Ui_MainWindow):
         self.tableView.setSortingEnabled(True)
         self.splitter.setStretchFactor(1,6)
         self.progressBar.setValue(0)
-        self.toolbar = NavigationToolbar(self.mpl.canvas, parent=self.result_tab)
-
+      #   self.toolbar = NavigationToolbar(self.mpl.canvas, parent=self.result_tab)
+      #   self.result_tabs.setTabsClosable(True)
 
         self.setup_model = QStandardItemModel()
         self.setup_model.setHorizontalHeaderLabels(['Parameter Name', 'Parameter Value'])
@@ -121,18 +145,23 @@ class Window(QMainWindow, Ui_MainWindow):
           #   else: 
           #       self.mpl.canvas.ax.remove()
           #   self.mpl.canvas.draw()
-          self.toolbar.setParent(None)
-          self.mpl.reset()
-          self.toolbar = NavigationToolbar(self.mpl.canvas, parent=self.result_tab)
-          self.process = ViewResult(self.dfs[self.curr_df], self.mpl.canvas, self.tableView.model()._dataframe.iloc[indices, :])
-          self.tabWidget.setCurrentWidget(self.result_tab)
-          self.loader_label.setVisible(True)
-          def when_ready():
-              self.mpl.canvas.draw()
-              self.toolbar.update()
-              self.loader_label.setVisible(False)
-          self.process.ready.connect(when_ready)
-          self.process.start()
+          
+         self.result_tabs.clear()
+         #  result_tab, mpl = mk_result_tab()
+         #  self.result_tabs.addTab(result_tab, "res")
+         # #  self.toolbar.setParent(None)
+         #  self.mpl.reset()
+         #  self.toolbar = NavigationToolbar(self.mpl.canvas, parent=self.result_tab)
+         self.process = ViewResult(self.dfs[self.curr_df], self.result_tabs, self.tableView.model()._dataframe.iloc[indices, :])
+         self.tabWidget.setCurrentWidget(self.result_tab)
+         self.loader_label.setVisible(True)
+         def when_ready(i):
+              self.process.canvas[i].draw()
+            #   self.toolbar.update()
+              if i == len(self.process.canvas)-1:
+                self.loader_label.setVisible(False)
+         self.process.ready.connect(when_ready)
+         self.process.start()
               # self.process.run()
               # when_ready()
 

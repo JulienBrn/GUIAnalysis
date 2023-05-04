@@ -60,7 +60,7 @@ class pwelchDataDF:
     if len(rows.index) < 6:
       return 1
     else:
-      return rows["Species"].nunique() + 2
+      return rows["Species"].nunique() + 4
 
   def show_figs(self, rows, canvas_list):
     if len(rows.index) < 6:
@@ -110,32 +110,40 @@ class pwelchDataDF:
           return res
       r = df.groupby(["Species", "Structure", "signal_type", "Condition"]).apply(compute_info).reset_index()
       def by_species():
+        nonlocal curr_canvas
         df = r.reset_index(drop=True)
         toolbox.add_draw_metadata(df, fig_group = ["aggregation_type"], col_group=["Species"], row_group=["signal_type"], color_group=[ "Structure", "Condition"])
-        nb_figs = df.groupby(["aggregation_type"]).ngroups()
+        nb_figs = df.groupby(by = ["aggregation_type"]).ngroups
+        logger.info("nb_figs = {}".format(nb_figs))
+        # logger.info("df is\n{}".format(df))
         p = toolbox.prepare_figures2(df, [canvas.fig for canvas in canvas_list[curr_canvas:curr_canvas+nb_figs]], xlim=[3, 60])
         curr_canvas+=nb_figs
         p.plot2(df, x="welch_f", y="welch_pow", use_zscore=False)
+        logger.info("by species done")
+        return list(range(curr_canvas-nb_figs, curr_canvas))
       def by_structure():
+        nonlocal curr_canvas
         df = r.reset_index(drop=True)
-        toolbox.add_draw_metadata(df, fig_group = ["aggregation_type"], col_group=["Structure"], row_group=["Condition", "signal_type"], color_group=["Species"])
-        nb_figs = df.groupby(["aggregation_type"]).ngroups()
+        df["Condition_b"] = df.apply(lambda row: "Park" if row["Condition"] in ["pd", "Park", "mptp"] else "healthy", axis=1)
+        toolbox.add_draw_metadata(df, fig_group = ["aggregation_type"], col_group=["Structure"], row_group=["Condition_b", "signal_type"], color_group=["Species"])
+        nb_figs = df.groupby(["aggregation_type"]).ngroups
+        logger.info("nb_figs = {}".format(nb_figs))
         p = toolbox.prepare_figures2(df, [canvas.fig for canvas in canvas_list[curr_canvas:curr_canvas+nb_figs]], xlim=[3, 60])
         curr_canvas+=nb_figs
         p.plot2(df, x="welch_f", y="welch_pow", use_zscore=False)
+        return list(range(curr_canvas-nb_figs, curr_canvas))
       def details():
+        nonlocal curr_canvas, df
         df = pd.concat([df, r], ignore_index=True)
         toolbox.add_draw_metadata(df, fig_group = ["Species"], col_group=["Structure"], row_group=["signal_type", "Condition"], color_group=["aggregation_type"])
-        nb_figs = df.groupby(["Species"]).ngroups()
+        nb_figs = df.groupby(["Species"]).ngroups
         p = toolbox.prepare_figures2(df, [canvas.fig for canvas in canvas_list[curr_canvas:curr_canvas+nb_figs]], xlim=[3, 60])
         curr_canvas+=nb_figs
         p.plot2(df, x="welch_f", y="welch_pow", use_zscore=False)
-      by_species()
-      yield()
-      by_structure()
-      yield()
-      details()
-      yield()
+        return list(range(curr_canvas-nb_figs, curr_canvas))
+      yield(by_species())
+      yield(by_structure())
+      yield(details())
 
   def view_items(self, canvas, rows):
     if len(rows.index) < 6:
