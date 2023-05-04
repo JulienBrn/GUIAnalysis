@@ -23,6 +23,7 @@ class pwelchDataDF:
      self.buaDF = buaDF
      self.metadata = {
       "pwelch.window_duration":"3",
+      "pwelch.preprocess.normalization":"z-score",
       **self.lfpDF.metadata,
       **self.buaDF.metadata,
       } 
@@ -55,8 +56,87 @@ class pwelchDataDF:
     canvas.ax.set_ylabel("Amplitude (?)")
     canvas.ax.set_xlim(3, 60)
 
-      
-  
+  def get_nb_figs(self, rows):
+    if len(rows.index) < 6:
+      return 1
+    else:
+      return rows["Species"].nunique() + 2
+
+  def show_figs(self, rows, canvas_list):
+    if len(rows.index) < 6:
+      canvas = canvas_list[0]
+      canvas.ax = canvas.fig.subplots(1)
+      for i in range(len(rows.index)):
+        label_dict = {k:v for k,v in rows.iloc[i, :].to_dict().items() if not "__" in k and not "SubSession" in k and not isinstance(v, RessourceHandle)}
+        label = ",".join(["{}={}".format(k, v) for k,v in label_dict.items()])
+        y = rows["welch_pow"].iat[i].get_result()
+        x = rows["welch_f"].iat[i].get_result()
+        canvas.ax.plot(x, y)
+      canvas.ax.set_xlabel("Frequency (Hz)")
+      canvas.ax.set_ylabel("Amplitude (?)")
+      canvas.ax.set_xlim(3, 60)
+      canvas.ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.05), fancybox=True, shadow=True)
+      canvas.fig.tight_layout()
+    else:
+      curr_canvas = 0
+      df = rows.copy().reset_index()
+      tqdm.pandas(desc="Computing ressources for pwelch_df") 
+      df["welch_pow"] = df.progress_apply(lambda row: row["welch_pow"].get_result(), axis=1, result_type="reduce")
+      df["aggregation_type"] = "plot"
+      def compute_info(df):
+        x_coords = [v.get_result() for v in df["welch_f"]]
+        if all(np.array_equal(x, x_coords[0]) for x in x_coords):
+          y_vals = [v for v in df["welch_pow"]]
+          y_avg = np.mean(y_vals, axis=0)
+          y_med = np.median(y_vals, axis=0)
+          res = pd.DataFrame([[x_coords[0],  y_avg, "avg"], [x_coords[0],  y_med, "median"]], columns=["welch_f", "welch_pow", "aggregation_type"])
+          return res
+        else:
+          mdf = pd.DataFrame()
+          mdf["welch_f"] = df["welch_f"]
+          mdf["welch_pow"] = df["welch_pow"]
+          mdf["min"] = mdf.apply(lambda row: np.amin(row["welch_f"].get_result()), axis=1)
+          mdf["max"] = mdf.apply(lambda row: np.amax(row["welch_f"].get_result()), axis=1)
+
+          max_x = mdf["max"].min()
+          min_x = mdf["min"].max()
+          logger.info("minx = {}, max_x={}".format(min_x, max_x))
+          new_x = np.arange(min_x, max_x, (max_x-min_x)/10000)
+          mdf["resampled"] = mdf.apply(lambda row: np.interp(new_x, row["welch_f"].get_result(), row["welch_pow"]) if np.all(np.diff(row["welch_f"].get_result()) > 0) else np.nan, axis=1)
+          y_vals = [v for v in mdf["resampled"]]
+          y_avg = np.mean(y_vals, axis=0)
+          y_med = np.median(y_vals, axis=0)
+          res = pd.DataFrame([[new_x,  y_avg, "avg"], [new_x,  y_med, "median"]], columns=["welch_f", "welch_pow", "aggregation_type"])
+          return res
+      r = df.groupby(["Species", "Structure", "signal_type", "Condition"]).apply(compute_info).reset_index()
+      def by_species():
+        df = r.reset_index(drop=True)
+        toolbox.add_draw_metadata(df, fig_group = ["aggregation_type"], col_group=["Species"], row_group=["signal_type"], color_group=[ "Structure", "Condition"])
+        nb_figs = df.groupby(["aggregation_type"]).ngroups()
+        p = toolbox.prepare_figures2(df, [canvas.fig for canvas in canvas_list[curr_canvas:curr_canvas+nb_figs]], xlim=[3, 60])
+        curr_canvas+=nb_figs
+        p.plot2(df, x="welch_f", y="welch_pow", use_zscore=False)
+      def by_structure():
+        df = r.reset_index(drop=True)
+        toolbox.add_draw_metadata(df, fig_group = ["aggregation_type"], col_group=["Structure"], row_group=["Condition", "signal_type"], color_group=["Species"])
+        nb_figs = df.groupby(["aggregation_type"]).ngroups()
+        p = toolbox.prepare_figures2(df, [canvas.fig for canvas in canvas_list[curr_canvas:curr_canvas+nb_figs]], xlim=[3, 60])
+        curr_canvas+=nb_figs
+        p.plot2(df, x="welch_f", y="welch_pow", use_zscore=False)
+      def details():
+        df = pd.concat([df, r], ignore_index=True)
+        toolbox.add_draw_metadata(df, fig_group = ["Species"], col_group=["Structure"], row_group=["signal_type", "Condition"], color_group=["aggregation_type"])
+        nb_figs = df.groupby(["Species"]).ngroups()
+        p = toolbox.prepare_figures2(df, [canvas.fig for canvas in canvas_list[curr_canvas:curr_canvas+nb_figs]], xlim=[3, 60])
+        curr_canvas+=nb_figs
+        p.plot2(df, x="welch_f", y="welch_pow", use_zscore=False)
+      by_species()
+      yield()
+      by_structure()
+      yield()
+      details()
+      yield()
+
   def view_items(self, canvas, rows):
     if len(rows.index) < 6:
       mode=0
@@ -79,7 +159,8 @@ class pwelchDataDF:
       canvas.fig.tight_layout()
     elif mode ==1 or mode==2:
       df = rows.copy().reset_index()
-      df["welch_pow"] = df.apply(lambda row: scipy.stats.zscore(row["welch_pow"].get_result()), axis=1, result_type="reduce")
+      tqdm.pandas(desc="Computing ressources for pwelch_df") 
+      df["welch_pow"] = df.progress_apply(lambda row: row["welch_pow"].get_result(), axis=1, result_type="reduce")
       df["aggregation_type"] = "plot"
       def compute_info(df):
         x_coords = [v.get_result() for v in df["welch_f"]]
@@ -134,7 +215,7 @@ class pwelchDataDF:
         # logger.info(df.to_string())
         toolbox.add_draw_metadata(df, col_group=["Species","aggregation_type"], row_group=["signal_type"], color_group=[ "Structure", "Condition"])
         # logger.info(df.to_string())
-        p = toolbox.prepare_figures2(df, [canvas.fig], xlim=[3, 60], ylim=[-1, 8])
+        p = toolbox.prepare_figures2(df, [canvas.fig], xlim=[3, 60])
         # p = toolbox.prepare_figures2(df, [canvas.fig])
         # df=df[(df["Structure"].isin(["STN", "STR", "ECoG"])) & (df["Condition"]=="CTL") ]
         # bugdf = df[["Structure", "signal_type", "Condition", "Row_label", "Column_label", "Column"]]
@@ -149,10 +230,16 @@ def _get_df(computation_m, signal_df, pwelch_params):
   for key,val in pwelch_params.items():
     pwelch_df[key] = val
 
-  def pwelch(signal, signal_fs, window_duration):
-    return scipy.signal.welch(signal, signal_fs, nperseg=window_duration*signal_fs)
+  def pwelch(signal, signal_fs, window_duration, preprocess_normalization):
+    if preprocess_normalization=="z-score":
+      normalized = scipy.stats.zscore(signal)
+    elif preprocess_normalization=="none":
+      normalized = signal
+    else:
+      raise BaseException("Unknown value {} for preprocess_normalization".format(preprocess_nornalization))
+    return scipy.signal.welch(normalized, signal_fs, nperseg=window_duration*signal_fs)
 
   tqdm.pandas(desc="Declaring pwelch")
-  pwelch_df = mk_block(pwelch_df, ["signal", "signal_fs", "window_duration"], pwelch, 
+  pwelch_df = mk_block(pwelch_df, ["signal", "signal_fs", "window_duration", "preprocess_normalization"], pwelch, 
                       {0: (np_loader, "welch_f", True), 1: (np_loader, "welch_pow", True)}, computation_m)
   return pwelch_df

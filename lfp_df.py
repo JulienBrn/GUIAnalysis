@@ -77,7 +77,7 @@ class LFPDataDF:
 
 def _get_df(computation_m, signal_df, lfp_params):
 
-  lfp_df = signal_df[signal_df["signal_type"].isin(["raw_cleaned"])].copy()
+  lfp_df = signal_df[(signal_df["signal_type"].isin(["raw_cleaned"]))].copy()
 
   for key,val in lfp_params.items():
     lfp_df[key] = val

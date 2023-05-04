@@ -129,7 +129,6 @@ class Window(QMainWindow, Ui_MainWindow):
           self.loader_label.setVisible(True)
           def when_ready():
               self.mpl.canvas.draw()
-              
               self.toolbar.update()
               self.loader_label.setVisible(False)
           self.process.ready.connect(when_ready)

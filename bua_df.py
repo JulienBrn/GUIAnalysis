@@ -75,7 +75,7 @@ class BUADataDF:
 
 
 def _get_df(computation_m, signal_df, bua_params):
-  bua_df = signal_df[signal_df["signal_type"].isin(["raw_cleaned", "mua_cleaned"])].copy()
+  bua_df = signal_df[(signal_df["signal_type"].isin(["raw_cleaned", "mua_cleaned"])) & (signal_df["Structure"] != "ECoG")].copy()
 
   for key,val in bua_params.items():
     bua_df[key] = val
