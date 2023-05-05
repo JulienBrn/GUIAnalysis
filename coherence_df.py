@@ -46,8 +46,161 @@ class coherenceDataDF:
       self.invalidated = False
     return self._dataframe
 
+  def compute(self):
+    self.get_df()
+    tqdm.pandas(desc="Compute coherence_df results") 
+    def compute_elem(row):
+      for col in self.result_columns:
+        if isinstance(row[col], RessourceHandle):
+          row[col].get_result()
+    self._dataframe.progress_apply(lambda row: compute_elem, axis=1, result_type="reduce")
 
 
+
+
+
+
+
+
+
+
+
+  def get_nb_figs(self, rows):
+    if len(rows.index) < 6:
+      return 1
+    else:
+      df = rows.copy()
+      df["Condition_b"] = df.apply(lambda row: "Park" if row["Condition"] in ["pd", "Park", "mptp"] else "healthy", axis=1)
+      return  df.groupby(["Condition_b", "signal_type_1", "signal_type_2"]).ngroups*2 + df.groupby(["Species", "signal_type_1", "signal_type_2", "Condition_b"]).ngroups*2
+
+  def show_figs(self, rows, canvas_list):
+    if len(rows.index) < 6:
+      canvas = canvas_list[0]
+      canvas.ax = canvas.fig.subplots(2, sharex="all")
+      canvas.ax[0].set_xlabel("Frequency (Hz)")
+      canvas.ax[0].set_ylabel("Amplitude (?)")
+      canvas.ax[1].set_xlabel("Frequency (Hz)")
+      canvas.ax[1].set_ylabel("Phase (?)")
+      canvas.ax[0].set_xlim(3, 60)
+      for i in range(len(rows.index)):
+        y = rows["coherence_pow"].iat[i].get_result()
+        phase = rows["coherence_phase"].iat[i].get_result()
+        x = rows["coherence_f"].iat[i].get_result()
+        if not x is np.nan:
+          label_dict = {k:v for k,v in rows.iloc[i, :].to_dict().items() if not "__" in k and not "SubSession" in k and not isinstance(v, RessourceHandle)}
+          label = ",".join(["{}={}".format(k, v) for k,v in label_dict.items()])
+          canvas.ax[0].plot(x, y, label="{}".format(label))
+          canvas.ax[1].plot(x, phase, label="{}".format(label))
+      canvas.ax[0].legend(loc='upper center', bbox_to_anchor=(0.5, 1.05), fancybox=True, shadow=True)
+      canvas.fig.tight_layout()
+      yield([0])
+    else:
+      curr_canvas = 0
+      df = rows.copy().reset_index()
+      tqdm.pandas(desc="Computing ressources for coherence_df") 
+      df["coherence_pow"] = df.progress_apply(lambda row: row["coherence_pow"].get_result(), axis=1, result_type="reduce")
+      df["aggregation_type"] = "plot"
+      
+      best_df = df.drop(columns=["coherence_f", "coherence_pow", "coherence_phase"])
+      def get_best(freqs, pows, phases):
+        try:
+          # logger.info("freqs :\n{}".format(freqs))
+          best_i = np.argmax(pows[(freqs > 5) & (freqs < 24)])
+          # print(best_i)
+          return freqs[best_i], pows[best_i], phases[best_i]
+        except:
+          logger.error("Impossible to find maxf")
+          return np.nan, np.nan, np.nan
+      best_df[["best_f", "best_pow", "best_r"]] = df.apply(lambda row: get_best(row["coherence_f"].get_result(), row["coherence_pow"], row["coherence_phase"].get_result()), axis =1, result_type="expand")
+      best_df = best_df[best_df["best_f"] != np.nan]
+      logger.info(best_df.columns)
+      best_df = best_df.reset_index(drop=True)
+      def compute_info(df):
+        x_coords = [v.get_result() for v in df["coherence_f"]]
+        if all(np.array_equal(x, x_coords[0]) for x in x_coords):
+          y_vals = [v for v in df["coherence_pow"]]
+          y_avg = np.mean(y_vals, axis=0)
+          y_med = np.median(y_vals, axis=0)
+          res = pd.DataFrame([[x_coords[0],  y_avg, "avg"], [x_coords[0],  y_med, "median"]], columns=["coherence_f", "coherence_pow", "aggregation_type"])
+          return res
+        else:
+          mdf = pd.DataFrame()
+          mdf["coherence_f"] = df["coherence_f"]
+          mdf["coherence_pow"] = df["coherence_pow"]
+          mdf["min"] = mdf.apply(lambda row: np.amin(row["coherence_f"].get_result()), axis=1)
+          mdf["max"] = mdf.apply(lambda row: np.amax(row["coherence_f"].get_result()), axis=1)
+
+          max_x = mdf["max"].min()
+          min_x = mdf["min"].max()
+          # logger.info("minx = {}, max_x={}".format(min_x, max_x))
+          new_x = np.arange(min_x, max_x, (max_x-min_x)/10000)
+          mdf["resampled"] = mdf.apply(lambda row: np.interp(new_x, row["coherence_f"].get_result(), row["coherence_pow"]) if np.all(np.diff(row["coherence_f"].get_result()) > 0) else np.nan, axis=1)
+          y_vals = [v for v in mdf["resampled"]]
+          y_avg = np.mean(y_vals, axis=0)
+          y_med = np.median(y_vals, axis=0)
+          res = pd.DataFrame([[new_x,  y_avg, "avg"], [new_x,  y_med, "median"]], columns=["coherence_f", "coherence_pow", "aggregation_type"])
+          return res
+      tqdm.pandas(desc="Adding average/median for coherence_df") 
+      r = df.groupby(by=["Species", "Condition", "Structure_1", "signal_type_1", "Structure_2", "signal_type_2"]).progress_apply(compute_info).reset_index()
+      
+      
+ 
+      # def by_species():
+      #   nonlocal curr_canvas
+      #   df = r.reset_index(drop=True)
+      #   toolbox.add_draw_metadata(df, fig_group = ["aggregation_type"], col_group=["Species"], row_group=["signal_type"], color_group=[ "Structure", "Condition"])
+      #   nb_figs = df.groupby(by = ["aggregation_type"]).ngroups
+      #   logger.info("nb_figs = {}".format(nb_figs))
+      #   # logger.info("df is\n{}".format(df))
+      #   p = toolbox.prepare_figures2(df, [canvas.fig for canvas in canvas_list[curr_canvas:curr_canvas+nb_figs]], xlim=[3, 60])
+      #   curr_canvas+=nb_figs
+      #   p.plot2(df, x="welch_f", y="welch_pow", use_zscore=False)
+      #   logger.info("by species done")
+      #   return list(range(curr_canvas-nb_figs, curr_canvas))
+      def by_structure():
+        nonlocal curr_canvas
+        df = r.reset_index(drop=True)
+        df["Condition_b"] = df.apply(lambda row: "Park" if row["Condition"] in ["pd", "Park", "mptp"] else "healthy", axis=1)
+        toolbox.add_draw_metadata(df, fig_group = ["aggregation_type", "Condition_b", "signal_type_1", "signal_type_2"], col_group=["Structure_1"], row_group=["Structure_2"], color_group=["Species"])
+        nb_figs = df.groupby(["aggregation_type", "Condition_b", "signal_type_1", "signal_type_2"]).ngroups
+        # logger.info("nb_figs = {}".format(nb_figs))
+        p = toolbox.prepare_figures2(df, [canvas.fig for canvas in canvas_list[curr_canvas:curr_canvas+nb_figs]], xlim=[3, 60])
+        curr_canvas+=nb_figs
+        p.plot2(df, x="coherence_f", y="coherence_pow", use_zscore=False)
+        return list(range(curr_canvas-nb_figs, curr_canvas))
+      def details_pow():
+        nonlocal curr_canvas, df
+        df = pd.concat([df, r], ignore_index=True)
+        df["Condition_b"] = df.apply(lambda row: "Park" if row["Condition"] in ["pd", "Park", "mptp"] else "healthy", axis=1)
+        toolbox.add_draw_metadata(df, fig_group = ["Species", "signal_type_1", "signal_type_2", "Condition_b"], col_group=["Structure_1"], row_group=["Structure_2"], color_group=["aggregation_type"])
+        nb_figs = df.groupby(["Species", "signal_type_1", "signal_type_2", "Condition_b"]).ngroups
+        p = toolbox.prepare_figures2(df, [canvas.fig for canvas in canvas_list[curr_canvas:curr_canvas+nb_figs]], xlim=[3, 60])
+        curr_canvas+=nb_figs
+        p.plot2(df, x="coherence_f", y="coherence_pow", use_zscore=False)
+        return list(range(curr_canvas-nb_figs, curr_canvas))
+      def details_phase():
+        nonlocal curr_canvas, best_df
+        logger.info("Columns:{}".format(best_df.columns))
+        # df = pd.concat([df, r], ignore_index=True)
+        df = best_df
+        logger.info("Columns:{}".format(df.columns))
+        df["Condition_b"] = best_df.apply(lambda row: "Park" if row["Condition"] in ["pd", "Park", "mptp"] else "healthy", axis=1)
+        toolbox.add_draw_metadata(df, fig_group = ["Species", "signal_type_1", "signal_type_2", "Condition_b"], col_group=["Structure_1"], row_group=["Structure_2"], color_group=["aggregation_type"])
+        nb_figs = df.groupby(["Species", "signal_type_1", "signal_type_2", "Condition_b"]).ngroups
+        if len(canvas_list) < curr_canvas+nb_figs:
+          logger.error("out of bounds {}/{}".format(curr_canvas+nb_figs, len(canvas_list))) 
+        p = toolbox.prepare_figures2(df, [canvas.fig for canvas in canvas_list[curr_canvas:curr_canvas+nb_figs]], projection="polar")
+        curr_canvas+=nb_figs
+        logger.info("Columns:{}".format(df.columns))
+        p.plot2(df, x="best_r", y="best_pow", use_zscore=False)
+        return list(range(curr_canvas-nb_figs, curr_canvas))
+      # yield(by_species())
+      yield(by_structure())
+      yield(details_pow())
+      yield(details_phase())
+
+
+      
   def view_item(self, canvas, row):
     canvas.ax = canvas.fig.subplots(2, sharex="all")
     canvas.ax[0].set_xlabel("Frequency (Hz)")
@@ -164,8 +317,8 @@ class coherenceDataDF:
 
 def _get_df(computation_m, signal_df, coherence_params):
   tqdm.pandas(desc="Computing shape of coherence_df") 
-  # coherence_df = toolbox.group_and_combine(signal_df[signal_df["signal_type"].isin(["lfp_cleaned", "bua_cleaned", "spike_continuous"])], ["Condition", "Subject", "Species", "Session", "Date", "SubSessionInfo", "SubSessionInfoType"])
-  coherence_df = toolbox.group_and_combine(signal_df[signal_df["signal_type"].isin(["bua_cleaned"])], ["Condition", "Subject", "Species", "Session", "Date", "SubSessionInfo", "SubSessionInfoType"])
+  coherence_df = toolbox.group_and_combine(signal_df[signal_df["signal_type"].isin(["lfp_cleaned", "bua_cleaned", "spike_continuous"])], ["Condition", "Subject", "Species", "Session", "Date", "SubSessionInfo", "SubSessionInfoType"])
+  # coherence_df = toolbox.group_and_combine(signal_df[signal_df["signal_type"].isin(["bua_cleaned"])], ["Condition", "Subject", "Species", "Session", "Date", "SubSessionInfo", "SubSessionInfoType"])
 
   for key,val in coherence_params.items():
     coherence_df[key] = val

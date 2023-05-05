@@ -50,7 +50,14 @@ class CleanDataDF:
       self.invalidated = False
     return self._dataframe
 
-
+  def compute(self):
+    self.get_df()
+    tqdm.pandas(desc="Compute coherence_df results") 
+    def compute_elem(row):
+      for col in self.result_columns:
+        if isinstance(row[col], RessourceHandle):
+          row[col].get_result()
+    self._dataframe.progress_apply(lambda row: compute_elem, axis=1, result_type="reduce")
 
   def view_item(self, canvas, row):
     params = [row["signal"], row["cleaned_signal"], row["signal_fs"], row["clean_bounds"].get_result(), 100, row["deviation_factor"], canvas.fig]

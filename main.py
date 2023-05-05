@@ -49,6 +49,9 @@ if __name__ == "__main__":
     pwelch_df = pwelchDataDF(computation_m, step_signals, lfp_df, bua_df)
     coherence_df = coherenceDataDF(computation_m, step_signals, lfp_df, bua_df, spike_continuous_df)
     correlation_df = correlationDataDF(computation_m, step_signals, spike_continuous_df)
+
+    # coherence_df.compute()
+
     win.add_df(input_df)
     win.add_df(clean_df)
     win.add_df(lfp_df)
@@ -57,9 +60,14 @@ if __name__ == "__main__":
     win.add_df(pwelch_df)
     win.add_df(coherence_df)
     win.add_df(correlation_df)
+    
+
+   
     if pathlib.Path("setup_params.json").exists():
         win.set_setup_params(json_loader.load(pathlib.Path("setup_params.json")))
     win.setup_ready.connect(lambda d: json_loader.save(pathlib.Path("setup_params.json"), d))
+
+    
     win.showMaximized()
     sys.exit(app.exec())
 

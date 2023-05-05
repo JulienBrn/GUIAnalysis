@@ -65,7 +65,14 @@ class correlationDataDF:
         x = np.arange(-0.5*y.size/fs, 0.5*y.size/fs, 1.0/fs)
         canvas.ax.plot(x, y)
         
-  
+  def compute(self):
+    self.get_df()
+    tqdm.pandas(desc="Compute coherence_df results") 
+    def compute_elem(row):
+      for col in self.result_columns:
+        if isinstance(row[col], RessourceHandle):
+          row[col].get_result()
+    self._dataframe.progress_apply(lambda row: compute_elem, axis=1, result_type="reduce")
 
 
 def _get_df(computation_m, signal_df, correlation_params):

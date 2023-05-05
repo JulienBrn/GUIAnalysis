@@ -153,13 +153,13 @@ class InputDataDF:
      self.metadata = {
       "input.human.base_folder": "/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/HumanData4review",
       "input.human.rescan": "False",
-      "input.human.size": "3",
+      "input.human.size": "-1",
       "input.monkey.base_folder": "/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/MarcAnalysis/Inputs/MonkeyData4Review",
       "input.monkey.rescan": "False",
-      "input.monkey.size": "3",
+      "input.monkey.size": "-1",
       "input.rat.base_folder": "/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/NicoAnalysis/Rat_Data",
       "input.rat.rescan": "False",
-      "input.rat.size": "3",
+      "input.rat.size": "-1",
      }
      self.invalidated = True
      self.step_signals = step_signals
