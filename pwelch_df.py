@@ -44,7 +44,14 @@ class pwelchDataDF:
       self.invalidated = False
     return self._dataframe
 
-
+  def compute(self):
+    self.get_df()
+    tqdm.pandas(desc="Compute coherence_df results") 
+    def compute_elem(row):
+      for col in self.result_columns:
+        if isinstance(row[col], RessourceHandle):
+          row[col].get_result()
+    self._dataframe.progress_apply(compute_elem, axis=1)
 
   def view_item(self, canvas, row):
     
@@ -244,7 +251,7 @@ def _get_df(computation_m, signal_df, pwelch_params):
     elif preprocess_normalization=="none":
       normalized = signal
     else:
-      raise BaseException("Unknown value {} for preprocess_normalization".format(preprocess_nornalization))
+      raise BaseException("Unknown value {} for preprocess_normalization".format(preprocess_normalization))
     return scipy.signal.welch(normalized, signal_fs, nperseg=window_duration*signal_fs)
 
   tqdm.pandas(desc="Declaring pwelch")

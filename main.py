@@ -2,7 +2,8 @@ from toolbox import Manager, json_loader, np_loader, df_loader, float_loader, ma
 import logging, beautifullogger, pathlib, pandas as pd, toolbox, numpy as np, scipy, h5py, re, ast, sys
 from tqdm import tqdm
 import statsmodels.api as sm
-
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QCoreApplication
 
 beautifullogger.setup(logmode="w")
 logger=logging.getLogger(__name__)
@@ -12,6 +13,8 @@ logging.getLogger("toolbox.signal_analysis_toolbox").setLevel(logging.WARNING)
 def handle_exception(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt):
         logger.info("Keyboard interupt")
+        # QCoreApplication.instance().quit()
+        sys.exit()
         return
     else:
        sys.__excepthook__(exc_type, exc_value, exc_traceback)
@@ -27,7 +30,7 @@ step_signals = {}
 
 
 from gui import Window
-from PyQt5.QtWidgets import QApplication
+
 from input_df import InputDataDF
 from clean_df import CleanDataDF
 from lfp_df import LFPDataDF
@@ -50,7 +53,7 @@ if __name__ == "__main__":
     coherence_df = coherenceDataDF(computation_m, step_signals, lfp_df, bua_df, spike_continuous_df)
     correlation_df = correlationDataDF(computation_m, step_signals, spike_continuous_df)
 
-    # coherence_df.compute()
+    
 
     win.add_df(input_df)
     win.add_df(clean_df)
@@ -64,7 +67,20 @@ if __name__ == "__main__":
 
    
     if pathlib.Path("setup_params.json").exists():
-        win.set_setup_params(json_loader.load(pathlib.Path("setup_params.json")))
+        default_params = win.get_setup_params()
+        win.set_setup_params(json_loader.load(pathlib.Path("full_params.json")))
+        last_params = win.get_setup_params()
+        if last_params.keys() != default_params.keys():
+            logger.warning("Strange")
+        else:
+            res = pd.DataFrame(zip(last_params.keys(), default_params.values(), last_params.values()), columns=["key", "default", "last"])
+            res["same"] = res["default"] == res["last"]
+            logger.info("Params:\n{}".format(res.to_string()))
+        win.on_computation_tab_clicked()
+    # coherence_df.compute()
+    # pwelch_df.compute()
+    # correlation_df.compute()
+
     win.setup_ready.connect(lambda d: json_loader.save(pathlib.Path("setup_params.json"), d))
 
     

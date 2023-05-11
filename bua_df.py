@@ -66,7 +66,25 @@ class BUADataDF:
     canvas.ax[1].set_xlabel("Time (s)")
     canvas.ax[1].set_ylabel("Amplitude (?)")
     
+  def get_nb_figs(self, rows):
+    return len(rows.index)
 
+  def show_figs(self, rows, canvas_list):
+    for i, row in rows.reset_index(drop=True).iterrows():
+      canvas = canvas_list[i]
+      canvas.ax = canvas.fig.subplots(2, 1, sharex="all", sharey="all")
+      y_source = row["signal"].get_result()
+      x_source = np.arange(0, y_source.shape[0]/row["signal_fs"], 1.0/row["signal_fs"])
+      canvas.ax[0].plot(x_source, y_source)
+      canvas.ax[0].set_xlabel("Time (s)")
+      canvas.ax[0].set_ylabel("Amplitude (?)")
+
+      y_bua = row["bua_sig"].get_result()
+      x_bua = np.arange(0, y_bua.shape[0]/row["bua_fs"].get_result(), 1.0/row["bua_fs"].get_result())
+      canvas.ax[1].plot(x_bua, y_bua)
+      canvas.ax[1].set_xlabel("Time (s)")
+      canvas.ax[1].set_ylabel("Amplitude (?)")
+      yield([i])
       
   
   # def view_items(self, canvas, row_indices):

@@ -2,7 +2,8 @@ from toolbox import Manager, np_loader, df_loader, float_loader, matlab_loader, 
 import logging, beautifullogger, pathlib, pandas as pd, toolbox, numpy as np, scipy, h5py, re, ast, sys
 from tqdm import tqdm
 import statsmodels.api as sm
-
+from typing import List
+import bisect
 
 logger=logging.getLogger(__name__)
 
@@ -17,24 +18,65 @@ def mk_monkey_input(base_folder , rescan) -> pd.DataFrame :
    if rescan:
       df_handle.invalidate_all()
    df: pd.DataFrame = df_handle.get_result()
+   metadata_df: pd.DataFrame = pd.read_csv(base_folder + "/BothMonkData_withTime.csv", sep=",")
+   metadata_df["Structure"] = metadata_df["Structure"].str.slice(0,3)
+   metadata_df["filename"] = "unit"+ metadata_df["unit"].astype(str)
+   df = df.merge(metadata_df, how="left", on=["Condition", "Subject", "Structure", "Date", "filename"])
+   if len(df[df["Start"].isna()].index) > 0:
+      logger.warning("Ignoring the following entries:\n{}".format(df[df["Start"].isna()]))
+      df = df[~df["Start"].isna()].reset_index(drop=True)
+   print(df)
    df["Species"] = "Monkey"
-   df["Session"] = "MS_#"+ df.groupby(by=["Date", "filename", "Subject"]).ngroup().astype(str)
-   df["SubSessionInfo"] = 0
-   df["SubSessionInfoType"] = "order"
+   df["Session"] = "MS_#"+ df.groupby(by=["Date", "Subject"]).ngroup().astype(str)
+   df["SubSessionInfo"] = list(zip(df["Start"], df["End"]))
+   df["SubSessionInfoType"] = "times"
    df["Channel"] = df["filename"]
+
+   def mk_subsession_group(d):
+      # times: List[float] = [t for tuple in d["SubSessionInfo"].to_list() for t in tuple]
+      times: List[float] = d["Start"].to_list() + d["End"].to_list()
+      times = sorted(set(times))
+      # print(times)
+      def transform_row(r):
+         start = r["Start"]
+         end = r["End"]
+         start_index = bisect.bisect_left(times, start)
+         end_index = bisect.bisect_left(times, end)
+         start_times =times[start_index:end_index]
+         end_times =times[start_index+1:end_index+1]
+         # print(start, end)
+         # print(pd.DataFrame(zip(start_times, end_times), columns=["Start", "End"]))
+         # input()
+         ret = pd.DataFrame(zip(start_times, end_times), columns=["Start", "End"])
+         ret["path"] = r["path"]
+         return ret
+      return pd.concat(d.apply(transform_row, axis=1).values, ignore_index=True)
+      # return None
+   
+   subsession_df = df.groupby(by=["Session"]).apply(mk_subsession_group).reset_index()
+   print(subsession_df)
+   df = subsession_df.merge(df, on=["Session", "path"], how="left", suffixes=("new", ""))
+   df["SubSessionInfonew"] = list(zip(df["Startnew"], df["Endnew"]))
+   df["SubSessionInfo"] = df["SubSessionInfonew"].astype(str) + "/" +  df["SubSessionInfo"].astype(str)
+   # input()
+         
    
    def get_monkey_signals(row: pd.Series) -> pd.DataFrame:
       row_raw = row.copy()
       row_raw["signal_type"] = "raw"
       row_raw["signal_fs"] = 25000
       row_raw["file_path"] = row["path"]
-      row_raw["file_keys"] = ("RAW", (0,))
+      start_index = int((row["Startnew"] - row["Start"])* row_raw["signal_fs"])
+      end_index = int((row["Endnew"] - row["Start"])* row_raw["signal_fs"])
+      row_raw["file_keys"] = ("RAW", 0, (start_index, end_index))
 
       row_spikes = row.copy()
       row_spikes["signal_type"] = "spike_times"
-      row_spikes["signal_fs"] = 25000
+      row_spikes["signal_fs"] = 40000
       row_spikes["file_path"] = row["path"]
-      row_spikes["file_keys"] = ("SUA", (0,))
+      start_index = int((row["Startnew"] - row["Start"])* row_spikes["signal_fs"])
+      end_index = int((row["Endnew"] - row["Start"])* row_spikes["signal_fs"])
+      row_spikes["file_keys"] = ("SUA", 0, (start_index, end_index))
 
       res = pd.DataFrame([row_raw, row_spikes])
       return res
@@ -69,12 +111,28 @@ def mk_human_input(base_folder , rescan) -> pd.DataFrame :
 
       row_spikes = row.copy()
       row_spikes["signal_type"] = "spike_times"
-      row_spikes["signal_fs"] = 48000 if row["Date"] < "2015_01_01" else 44000
+      row_spikes["signal_fs"] = 1
       row_spikes["file_path"] = row["path"]
-      row_spikes["file_keys"] = ("SUA", (0,))
+      row_spikes["file_keys"] = ("SUA",)
 
       res = pd.DataFrame([row_raw, row_spikes])
-      return res
+      
+      
+      f = matlab_loader.load(row["path"])
+      def filter_line(r):
+         ktuple = ast.literal_eval(r["file_keys"]) if isinstance(r["file_keys"], str) else r["file_keys"]
+         ret = f
+         for key in ktuple:
+            ret = ret[key]
+         if ret.size > 10:
+            # if ret.size<20:
+            #    logger.info("Saving {}[{}]\nContents: {}".format(row["path"], r["file_keys"], ret))
+            return True
+         else:
+            logger.warning("Removing {}[{}]\nContents: {}".format(row["path"], r["file_keys"], ret))
+            return False
+      filtered_res = res[res.apply(filter_line, axis=1)]
+      return filtered_res
    tqdm.pandas(desc="Creating human metadata")
    return pd.concat(df.progress_apply(get_human_signals, axis=1).values, ignore_index=True)
    
@@ -214,6 +272,8 @@ def _get_df(dataframe_manager, computation_m, metadata):
   if metadata["input.monkey.rescan"] == "True":
      monkey_input_handle.invalidate_all()
 
+#   monkey_input_handle.invalidate_all()#to remove
+
   monkey_input = monkey_input_handle.get_result().drop(columns=["path", "filename", "ext"])
   if metadata["input.monkey.size"].isdigit():
      monkey_input=monkey_input.iloc[0:int(metadata["input.monkey.size"]), :]
@@ -228,6 +288,14 @@ def _get_df(dataframe_manager, computation_m, metadata):
     )
   if metadata["input.human.rescan"] == "True":
      human_input_handle.invalidate_all()
+     human_input_handle2 = dataframe_manager.declare_computable_ressource(
+        mk_human_input, {"rescan": False, "base_folder": metadata["input.human.base_folder"]}, 
+        df_loader, "human_input_df", True
+     )
+     human_input_handle2.invalidate_all()
+
+#   human_input_handle.invalidate_all()#to remove
+
   human_input = human_input_handle.get_result().drop(columns=["path", "filename", "ext", "Date_HT", "Electrode_Depth"])
   if metadata["input.human.size"].isdigit():
      human_input=human_input.iloc[0:int(metadata["input.human.size"]), :]
@@ -247,6 +315,9 @@ def _get_df(dataframe_manager, computation_m, metadata):
         df_loader, "rat_input_df", True
     )
      rat_input_handle2.invalidate_all()
+
+#   rat_input_handle.invalidate_all()#to remove
+
   rat_input = rat_input_handle.get_result().drop(columns=["path", "filename", "ext"])
   if metadata["input.rat.size"].isdigit():
      rat_input=rat_input.iloc[0:int(metadata["input.rat.size"]), :]
@@ -254,15 +325,15 @@ def _get_df(dataframe_manager, computation_m, metadata):
   input_df = pd.concat([monkey_input, human_input, rat_input], ignore_index=True)[INPUT_Columns]
 
   subcols = [col for col in input_df.columns if col!="file_path"]
-  if input_df.duplicated(subset=subcols).any():
-      logger.error(
-        "Duplicates in input dataframe. Duplicates are:\n{}".format(
-            input_df.duplicated(subset=subcols, keep=False).sort_values(by=subcols)))
-  else:
-      if input_df.isnull().sum().sum() != 0:
-        logger.warning("Number of null values are\n{}".format(input_df.isnull().sum()))
-      else:
-        logger.info("Metadata seems ok")
+#   if input_df.duplicated(subset=subcols).any():
+#       logger.error(
+#         "Duplicates in input dataframe. Duplicates are:\n{}".format(
+#             input_df.duplicated(subset=subcols, keep=False).sort_values()))
+#   else:
+#       if input_df.isnull().sum().sum() != 0:
+#         logger.warning("Number of null values are\n{}".format(input_df.isnull().sum()))
+#       else:
+#         logger.info("Metadata seems ok")
 
 
   def get_file_ressource(d):
@@ -282,8 +353,11 @@ def _get_df(dataframe_manager, computation_m, metadata):
     ktuple = ast.literal_eval(file_keys) if isinstance(file_keys, str) else file_keys
     res = file_ressource
     for key in ktuple:
-        res = res[key]
-    return res
+        if hasattr(key, "__len__") and len(key) ==2:
+           res = res[key[0]:key[1]]
+        else:
+           res = res[key]
+    return res.reshape(-1) if hasattr(res, "reshape") else res
 
   input_df = mk_block(
     input_df, ["file_ressource", "file_keys"], get_array_ressource, 

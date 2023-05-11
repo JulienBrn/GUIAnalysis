@@ -72,7 +72,8 @@ class correlationDataDF:
       for col in self.result_columns:
         if isinstance(row[col], RessourceHandle):
           row[col].get_result()
-    self._dataframe.progress_apply(lambda row: compute_elem, axis=1, result_type="reduce")
+    self._dataframe.progress_apply(compute_elem, axis=1)
+
 
 
 def _get_df(computation_m, signal_df, correlation_params):

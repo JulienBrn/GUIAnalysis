@@ -78,7 +78,11 @@ def _get_df(computation_m, signal_df, spike_params):
 
   def make_continuous(signal: np.array, signal_fs, size):
     out_fs = 1.0/size
-    new_size = int(signal.max()*out_fs/signal_fs)+2
+    if signal.size <5:
+       return np.nan
+    new_size = int(np.max(signal)*out_fs/signal_fs)+2
+    if new_size < 100:
+       logger.warning("Make continuous, new size <100, got {}, with new_fs = {}, in_fs ={}, max = {}".format(new_size, out_fs, signal_fs, np.max(signal)))
     zeros = np.zeros(new_size)
     indexes = (signal *out_fs/signal_fs).astype(int)
     np.add.at(zeros, indexes, 1)
