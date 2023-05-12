@@ -103,10 +103,16 @@ class coherenceDataDF:
       df["coherence_f"] = df.progress_apply(lambda row: row["coherence_f"].get_result(), axis=1, result_type="reduce")
       df["Condition_b"] = df.apply(lambda row: "Park" if row["Condition"] in ["pd", "Park", "mptp"] else "healthy", axis=1)
       df["aggregation_type"] = "plot"
-      na_mask = df["coherence_f"].isna()
+      na_mask = df.apply(lambda row: not hasattr(row["coherence_f"], "size") or row["coherence_f"].size < 20, axis=1)
       df = df[~na_mask].reset_index(drop=True)
       if na_mask.any():
-        logger.warning("Ignored {} results".format(na_mask.sum()))
+        logger.warning("Ignored {} results due to na".format(na_mask.sum()))
+      else:
+        logger.info("all results good")
+      duplicate_mask = df.apply(lambda row: np.all(row["coherence_pow"] >0.95), axis=1)
+      df = df[~duplicate_mask].reset_index(drop=True)
+      if duplicate_mask.any():
+        logger.warning("Ignored {} results due to duplication".format(duplicate_mask.sum()))
       else:
         logger.info("all results good")
       tqdm.pandas(desc="Adding group information for coherence_df") 

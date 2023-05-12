@@ -134,7 +134,8 @@ def mk_human_input(base_folder , rescan) -> pd.DataFrame :
       filtered_res = res[res.apply(filter_line, axis=1)]
       return filtered_res
    tqdm.pandas(desc="Creating human metadata")
-   return pd.concat(df.progress_apply(get_human_signals, axis=1).values, ignore_index=True)
+   res = pd.concat(df.progress_apply(get_human_signals, axis=1).values, ignore_index=True)
+   return res
    
 def mk_rat_input(base_folder , rescan) -> pd.DataFrame :
    df_handle = folder_manager.declare_computable_ressource(
@@ -365,4 +366,5 @@ def _get_df(dataframe_manager, computation_m, metadata):
 
   input_df["Channel or Neuron"] = input_df["Channel"]
   final_cols = ["signal_type", "signal_fs", "signal", "Species", "Condition", "Subject", "Date", "Session", "SubSessionInfo", "SubSessionInfoType",  "Structure", "Channel or Neuron", "file_path", "file_keys"]
+  
   return input_df.copy()[final_cols]
