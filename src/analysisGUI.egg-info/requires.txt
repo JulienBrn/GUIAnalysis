@@ -1,0 +1,10 @@
+pandas
+matplotlib
+PyQt5
+sklearn
+scikit-learn
+scipy
+numpy
+tqdm
+beautifullogger
+statsmodels

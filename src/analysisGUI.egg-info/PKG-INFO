@@ -1,0 +1,11 @@
+Metadata-Version: 2.1
+Name: analysisGUI
+Version: 0.1
+Summary: analysisGUI for python analysis
+Home-page: https://github.com/JulienBrn/analysisGUI
+Download-URL: https://github.com/JulienBrn/analysisGUI.git
+Author: Julien Braine
+Author-email: julienbraine@yahoo.fr
+License: MIT
+Keywords: python,dataframe
+License-File: LICENSE.txt
