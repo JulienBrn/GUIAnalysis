@@ -80,50 +80,54 @@ if __name__ == "__main__":
     # coherence_df.compute()
     # pwelch_df.compute()
     # correlation_df.compute()
-
+    # if win.process:
+    #     win.process.wait()
     # check_df = input_df.get_df().reset_index(drop=True)
     # check_df["file_path"]=check_df["file_path"].str.slice(start=len("/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/"))
     # check_df = check_df.loc[check_df["Species"] == "Human", :]
-    # # check_df=check_df.loc[check_df["signal_type"] == "mua", :]
-    # # tqdm.pandas(desc="Loading signals") 
-    # # # check_df["signal"] = check_df.progress_apply(lambda row: row["signal"].get_result(), axis =1)
-    # # check_df["key"] = 0
-    # # check_df = check_df[["signal", "key", "file_path", "file_keys"]].reset_index(drop=True)
-    # # res_df = toolbox.group_and_combine(check_df, ["key"], include_eq=False)
-    # # def is_same(row):
-    # #     s1 = row["signal_1"].get_result()
-    # #     s2 = row["signal_2"].get_result()
-    # #     if s1.size != s2.size:
-    # #         return -1
-    # #     diff = s1-s2
-    # #     nb = (np.abs(diff)>0.001).sum()
-    # #     if nb == 0:
-    # #         logger.warning("The following arrays are equal \n{}[{}]\n{}[{}]".format(row["file_path_1"], row["file_keys_1"], row["file_path_2"], row["file_keys_2"]))
-    # #     return nb
-    # #     #     logger.warning("The following arrays are equal \n{}[{}]\n{}[{}]".format(row["file_path_1"], row["file_keys_1"], row["file_path_2"], row["file_keys_2"]))
-    # #     #     return True
-    # #     # return False
-    # # print(res_df.columns)
-    # # tqdm.pandas(desc="Checking identical signals") 
-    # # res_df["same"] = res_df.progress_apply(is_same, axis=1)
-    # # res_df = res_df.loc[res_df["same"]!=-1, :]
-    # # df_loader.save("duplicates signals.tsv", res_df[["same", "file_path_1", "file_keys_1", "file_path_2", "file_keys_2"]].copy())
-    # duplicates = df_loader.load("duplicates signals.tsv")
-    # duplicates = duplicates.loc[duplicates["same"]==0]
+    # check_df=check_df.loc[check_df["signal_type"] == "mua", :]
+    # # # tqdm.pandas(desc="Loading signals") 
+    # # # # check_df["signal"] = check_df.progress_apply(lambda row: row["signal"].get_result(), axis =1)
+    # check_df["key"] = 0
+    # check_df["old_index"] = np.arange(0, len(check_df.index))
+    # check_df = check_df[["signal", "key", "file_path", "file_keys", "old_index"]].reset_index(drop=True)
+    # res_df = toolbox.group_and_combine(check_df, ["key"], include_eq=False)
+    # res_df["sort"] = res_df["old_index_1"] + res_df["old_index_2"]
+    # res_df.sort_values(by = "sort", inplace=True, ignore_index=True)
+    # def is_same(row):
+    #     s1 = row["signal_1"].get_result()
+    #     s2 = row["signal_2"].get_result()
+    #     if s1.size != s2.size:
+    #         return -1
+    #     diff = s1-s2
+    #     nb = (np.abs(diff)>0.001).sum()
+    #     if nb == 0:
+    #         logger.warning("The following arrays are equal \n{}[{}]\n{}[{}]".format(row["file_path_1"], row["file_keys_1"], row["file_path_2"], row["file_keys_2"]))
+    #     return nb
+    #     #     logger.warning("The following arrays are equal \n{}[{}]\n{}[{}]".format(row["file_path_1"], row["file_keys_1"], row["file_path_2"], row["file_keys_2"]))
+    #     #     return True
+    #     # return False
+    # print(res_df.columns)
+    # tqdm.pandas(desc="Checking identical signals") 
+    # res_df["same"] = res_df.progress_apply(is_same, axis=1)
+    # res_df = res_df.loc[res_df["same"]!=-1, :]
+    # df_loader.save("duplicates_human_signals.tsv", res_df[["same", "file_path_1", "file_keys_1", "file_path_2", "file_keys_2"]].copy())
+    # # duplicates = df_loader.load("duplicates signals.tsv")
+    # # duplicates = duplicates.loc[duplicates["same"]==0]
 
-    # s = set(duplicates["file_path_1"].to_list() + duplicates["file_path_2"].to_list())
-    # s = set(check_df["file_path"].to_list())
-    # # id_dict = {k:i for i,k in enumerate(set(duplicates["file_path_1"].to_list() + duplicates["file_path_2"].to_list()))}
-    # # duplicates["id_1"] = duplicates.apply(lambda row: id_dict[row["file_path_1"]], axis=1)
-    # # duplicates["id_2"] = duplicates.apply(lambda row: id_dict[row["file_path_2"]], axis=1)
-    # # print(duplicates)
-    # from disjoint_union import DisjointUnion
-    # uf = DisjointUnion([])
-    # for e in s:
-    #     uf |= [e]
-    # print(len(uf))
-    # duplicates.apply(lambda row: uf.union(row["file_path_1"], row["file_path_2"]), axis=1)
-    # print([sorted(list(s))[0] for s in uf])
+    # # s = set(duplicates["file_path_1"].to_list() + duplicates["file_path_2"].to_list())
+    # # s = set(check_df["file_path"].to_list())
+    # # # id_dict = {k:i for i,k in enumerate(set(duplicates["file_path_1"].to_list() + duplicates["file_path_2"].to_list()))}
+    # # # duplicates["id_1"] = duplicates.apply(lambda row: id_dict[row["file_path_1"]], axis=1)
+    # # # duplicates["id_2"] = duplicates.apply(lambda row: id_dict[row["file_path_2"]], axis=1)
+    # # # print(duplicates)
+    # # from disjoint_union import DisjointUnion
+    # # uf = DisjointUnion([])
+    # # for e in s:
+    # #     uf |= [e]
+    # # print(len(uf))
+    # # duplicates.apply(lambda row: uf.union(row["file_path_1"], row["file_path_2"]), axis=1)
+    # # print([sorted(list(s))[0] for s in uf])
 
     # raise BaseException("stop")
 

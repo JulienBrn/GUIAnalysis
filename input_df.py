@@ -14,7 +14,7 @@ def mk_monkey_input(base_folder , rescan) -> pd.DataFrame :
       read_folder_as_database, {
          "search_folder": pathlib.Path(base_folder),
          "columns": ["Condition", "Subject", "Structure", "Date"],
-         "pattern": "**/*.mat"}, df_loader, "input_file_df", save=True)
+         "pattern": "**/*.mat"}, df_loader, "monkey_input_file_df", save=True)
    if rescan:
       df_handle.invalidate_all()
    df: pd.DataFrame = df_handle.get_result()
@@ -69,6 +69,7 @@ def mk_monkey_input(base_folder , rescan) -> pd.DataFrame :
       start_index = int((row["Startnew"] - row["Start"])* row_raw["signal_fs"])
       end_index = int((row["Endnew"] - row["Start"])* row_raw["signal_fs"])
       row_raw["file_keys"] = ("RAW", 0, (start_index, end_index))
+      row_raw["Duration"] = row["Endnew"] - row["Startnew"]
 
       row_spikes = row.copy()
       row_spikes["signal_type"] = "spike_times"
@@ -77,6 +78,7 @@ def mk_monkey_input(base_folder , rescan) -> pd.DataFrame :
       start_index = int((row["Startnew"] - row["Start"])* row_spikes["signal_fs"])
       end_index = int((row["Endnew"] - row["Start"])* row_spikes["signal_fs"])
       row_spikes["file_keys"] = ("SUA", 0, (start_index, end_index))
+      row_spikes["Duration"] = row["Endnew"] - row["Startnew"]
 
       res = pd.DataFrame([row_raw, row_spikes])
       return res
@@ -89,7 +91,7 @@ def mk_human_input(base_folder , rescan) -> pd.DataFrame :
       read_folder_as_database, {
          "search_folder": pathlib.Path(base_folder),
          "columns":["Structure", "Date_HT", "Electrode_Depth"],
-         "pattern": "**/*.mat"}, df_loader, "input_file_df", save=True)
+         "pattern": "**/*.mat"}, df_loader, "human_input_file_df", save=True)
    if rescan:
       df_handle.invalidate_all()
    df: pd.DataFrame = df_handle.get_result()
@@ -135,6 +137,16 @@ def mk_human_input(base_folder , rescan) -> pd.DataFrame :
       return filtered_res
    tqdm.pandas(desc="Creating human metadata")
    res = pd.concat(df.progress_apply(get_human_signals, axis=1).values, ignore_index=True)
+   # duplicated = res[res["signal_type"]=="mua"].duplicated(subset=["Session"])
+   # duplicated_bis = res[res["signal_type"]=="mua"].duplicated(subset=["Date", "Electrode_Depth", "Subject"])
+   # logger.info("#Human Session BUA duplicated = {}".format(duplicated.sum()))
+   # logger.info("#Human Session BUA duplicatedbis = {}".format(duplicated_bis.sum()))
+   # df_loader.save("add_human_duplication.tsv", res.loc[duplicated_bis & (~duplicated), ["file_path", "file_keys"]].copy())
+
+   res_raw=res[res["signal_type"]=="mua"].copy()
+   res_spikes=res[res["signal_type"]!="mua"].copy()
+   res_raw.drop_duplicates(subset=["Session"], inplace=True)
+   res=pd.concat([res_raw, res_spikes], ignore_index=True)
    return res
    
 def mk_rat_input(base_folder , rescan) -> pd.DataFrame :
@@ -142,7 +154,7 @@ def mk_rat_input(base_folder , rescan) -> pd.DataFrame :
       read_folder_as_database, {
          "search_folder": pathlib.Path(base_folder),
          "columns":["Condition", "Subject", "Date", "Session", "Structure"],
-         "pattern": "**/*.mat"}, df_loader, "input_file_df", save=True)
+         "pattern": "**/*.mat"}, df_loader, "rat_input_file_df", save=True)
    if rescan:
       df_handle.invalidate_all()
    df: pd.DataFrame = df_handle.get_result()
@@ -296,7 +308,7 @@ def _get_df(dataframe_manager, computation_m, metadata):
      human_input_handle2.invalidate_all()
 
 #   human_input_handle.invalidate_all()#to remove
-
+# 
   human_input = human_input_handle.get_result().drop(columns=["path", "filename", "ext", "Date_HT", "Electrode_Depth"])
   if metadata["input.human.size"].isdigit():
      human_input=human_input.iloc[0:int(metadata["input.human.size"]), :]
