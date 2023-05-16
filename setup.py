@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 
 setup(
@@ -6,6 +6,11 @@ setup(
     packages=['analysisGUI'],
     package_data={
         "analysisGUI.ui": ["*.gif"],
+    },
+    entry_points={
+        'console_scripts': [
+            'julien-analysis = analysisGUI:run_gui',
+        ]
     },
     version='0.1',
     license='MIT',

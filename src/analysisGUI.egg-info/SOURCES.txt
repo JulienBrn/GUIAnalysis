@@ -12,9 +12,11 @@ src/analysisGUI/lfp_df.py
 src/analysisGUI/main_window_ui.py
 src/analysisGUI/mplwidget.py
 src/analysisGUI/pwelch_df.py
+src/analysisGUI/run_gui_analysis.py
 src/analysisGUI/spike_continuous_df.py
 src/analysisGUI.egg-info/PKG-INFO
 src/analysisGUI.egg-info/SOURCES.txt
 src/analysisGUI.egg-info/dependency_links.txt
+src/analysisGUI.egg-info/entry_points.txt
 src/analysisGUI.egg-info/requires.txt
 src/analysisGUI.egg-info/top_level.txt
