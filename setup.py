@@ -22,5 +22,5 @@ setup(
     download_url = 'https://github.com/JulienBrn/analysisGUI.git',
     package_dir={'': 'src'},
     keywords=['python', 'dataframe'],
-    install_requires=['pandas', 'matplotlib', 'PyQt5', "sklearn", "scikit-learn", "scipy", "numpy", "tqdm", "beautifullogger", "statsmodels"],
+    install_requires=['pandas', 'matplotlib', 'PyQt5', "sklearn", "scikit-learn", "scipy", "numpy", "tqdm", "beautifullogger", "statsmodels", "mat73", "psutil"],
 )
