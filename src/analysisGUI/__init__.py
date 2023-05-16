@@ -10,5 +10,4 @@ from analysisGUI.coherence_df import coherenceDataDF
 from analysisGUI.correlation_df import correlationDataDF
 from analysisGUI.run_gui_analysis import run_gui
 
-def test():
-	print("testing")
+
