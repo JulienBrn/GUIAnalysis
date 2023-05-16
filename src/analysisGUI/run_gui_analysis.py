@@ -1,7 +1,7 @@
 from toolbox import Manager, json_loader, np_loader, df_loader, float_loader, matlab_loader, matlab73_loader, read_folder_as_database, mk_block, replace_artefacts_with_nans2
 import logging, beautifullogger, pathlib, pandas as pd, toolbox, numpy as np, scipy, h5py, re, ast, sys
 from tqdm import tqdm
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtCore import QCoreApplication
 
 beautifullogger.setup(logmode="w")
@@ -76,6 +76,9 @@ def run_gui():
             res["same"] = res["default"] == res["last"]
             logger.info("Params:\n{}".format(res.to_string()))
         win.on_computation_tab_clicked()
+        win.tabWidget.setCurrentWidget(win.tabWidget.findChild(QWidget, "computation_tab"))
+    else:
+    	win.tabWidget.setCurrentWidget(win.tabWidget.findChild(QWidget, "setup_tab"))
     # coherence_df.compute()
     # pwelch_df.compute()
     # correlation_df.compute()

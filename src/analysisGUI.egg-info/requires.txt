@@ -8,3 +8,5 @@ numpy
 tqdm
 beautifullogger
 statsmodels
+mat73
+psutil
