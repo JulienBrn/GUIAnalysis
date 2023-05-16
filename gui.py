@@ -122,6 +122,7 @@ class Window(QMainWindow, Ui_MainWindow):
       self.treeView.header().setDefaultSectionSize(250)
       self.setup_params=[self.setup_model.invisibleRootItem(), None, {}]
 
+
       def compute(indices):
          if self.curr_df is None:
             logger.error("Nothing to compute")
@@ -152,6 +153,17 @@ class Window(QMainWindow, Ui_MainWindow):
          # #  self.toolbar.setParent(None)
          #  self.mpl.reset()
          #  self.toolbar = NavigationToolbar(self.mpl.canvas, parent=self.result_tab)
+         if hasattr(self.dfs[self.curr_df], "view_params"):
+            params = {}
+            def rec_print(root, prefix):
+               if root[2] == {}:
+                  params[prefix+root[0].text()] = root[1].text()
+               for child, val in root[2].items():
+                  rec_print(val, prefix+root[0].text()+".")
+            for child, val in self.view_params_dict[2].items():
+               rec_print(val, "")
+            self.dfs[self.curr_df].view_params = params
+         
          self.process = ViewResult(self.dfs[self.curr_df], self.result_tabs, self.tableView.model()._dataframe.iloc[indices, :])
          self.tabWidget.setCurrentWidget(self.result_tab)
          self.loader_label.setVisible(True)
@@ -160,6 +172,7 @@ class Window(QMainWindow, Ui_MainWindow):
             #   self.toolbar.update()
             if i == len(self.process.canvas)-1:
                self.loader_label.setVisible(False)
+               self.figs =  [canvas.fig for canvas in self.process.canvas]
          self.process.ready.connect(when_ready)
          self.process.start()
             # self.process.run()
@@ -244,6 +257,7 @@ class Window(QMainWindow, Ui_MainWindow):
       self.invalidate.clicked.connect(lambda: invalidate([i.row() for i in self.tableView.selectionModel().selectedRows()]))
       self.compute.clicked.connect(lambda: compute([i.row() for i in self.tableView.selectionModel().selectedRows()]))
       self.view.clicked.connect(lambda: view([i.row() for i in self.tableView.selectionModel().selectedRows()]))
+      self.exportall.clicked.connect(lambda: self.export_all_figures())
       self.export_btn.clicked.connect(self.save_df_file_dialog)
       self.next.clicked.connect(get_next)
       self.previous.clicked.connect(get_prev)
@@ -372,6 +386,13 @@ class Window(QMainWindow, Ui_MainWindow):
             to_save_df["coherence_pow_core_path"] = to_save_df.apply(lambda row: str(row["coherence_pow"].manager.d[row["coherence_pow"].id]._core_path), axis=1)
             df_loader.save(filename, to_save_df)
 
+    def export_all_figures(self):
+       dir = QFileDialog.getExistingDirectory(self, "Select folder to export to")
+       if dir:
+          for i, fig in enumerate(self.figs):
+             fig.savefig(pathlib.Path(dir) / "figure_{}.png".format(i), dpi=200)
+          logger.info("exported")
+
 
     @QtCore.pyqtSlot("QModelIndex")
     def on_listView_clicked(self, model_index):
@@ -391,5 +412,27 @@ class Window(QMainWindow, Ui_MainWindow):
           self.df_models[self.curr_df] = DataFrameModel(self.dfs[self.curr_df].get_df())
           self.tableView.setModel(self.df_models[self.curr_df])
           self.tableView.setModel(self.df_models[self.curr_df])
+
+       self.view_params_model = QStandardItemModel()
+       self.view_params_model.setHorizontalHeaderLabels(['Parameter Name', 'Parameter Value'])
+       self.view_params.setModel(self.view_params_model)
+       self.view_params.header().setDefaultSectionSize(120)
+       self.view_params_dict=[self.view_params_model.invisibleRootItem(), None, {}]
+
+       view_params = self.dfs[self.curr_df].view_params if hasattr(self.dfs[self.curr_df], "view_params") else {}
+       for p, val in view_params.items():
+          keys = p.split(".")
+          curr = self.view_params_dict
+          for k in keys:
+            if not k in curr[2]:
+              curr[0].appendRow([QStandardItem(k), QStandardItem("")])
+              if not curr[1] is None:
+                curr[1].setEditable(False)
+              curr[0].child(curr[0].rowCount() - 1, 1).setEditable(True)
+              curr[0].child(curr[0].rowCount() - 1, 0).setEditable(False)
+              curr[2][k]=[curr[0].child(curr[0].rowCount() - 1, 0), curr[0].child(curr[0].rowCount() - 1, 1), {}]
+            curr = curr[2][k]
+          curr[1].setText(str(val))
+       self.view_params.expandAll()
 
 

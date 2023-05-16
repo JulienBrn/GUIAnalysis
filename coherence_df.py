@@ -30,6 +30,11 @@ class coherenceDataDF:
       } 
      self.invalidated = True
      self.step_signal = step_signal
+     self.view_params = {
+       "best_f.rat.min": "12", "best_f.rat.max": "24", 
+       "best_f.monkey.min": "6", "best_f.monkey.max": "20", 
+       "best_f.human.min": "10", "best_f.human.max": "24"
+     }
 
   
   name = "coherence"
@@ -112,11 +117,11 @@ class coherenceDataDF:
       duplicate_mask = df.apply(lambda row: np.all(row["coherence_pow"] >0.95), axis=1)
       df = df[~duplicate_mask].reset_index(drop=True)
       if duplicate_mask.any():
-        logger.warning("Ignored {} results due to duplication".format(duplicate_mask.sum()))
+        logger.warning("Ignored {} results due to duplication. Examples:\n{}".format(duplicate_mask.sum(), df[duplicate_mask].head(5).to_string()))
       else:
         logger.info("all results good")
       tqdm.pandas(desc="Adding group information for coherence_df") 
-      r = df.groupby(by=["Species", "Condition_b", "Structure_1", "signal_type_1", "Structure_2", "signal_type_2"]).progress_apply(compute_group_info).reset_index()
+      r = df.groupby(by=["Species", "Condition_b", "Structure_1", "signal_type_1", "Structure_2", "signal_type_2"]).progress_apply(lambda df: compute_group_info(df, self.view_params)).reset_index()
       
       
  
@@ -236,14 +241,16 @@ def resample_if_needed(df):
     return x_coords, np.array(y_pow.to_list()), np.array(y_phase.to_list())
 
 
-def compute_group_info(df):
+def compute_group_info(df, view_params):
   x_coords, y_pow, y_phase = resample_if_needed(df)
   pow_avg = np.mean(y_pow, axis=0)
   pow_median = np.median(y_pow, axis=0)
   phase_avg = np.mean(y_phase, axis=0)
   phase_median = np.median(y_phase, axis=0)
 
-  best_x = np.argmax(np.where((x_coords > 6) & (x_coords < 24), pow_avg, np.zeros(pow_avg.size)), keepdims=True)
+  min_best_f = float(view_params["best_f."+df.name[0].lower()+".min"])
+  max_best_f = float(view_params["best_f."+df.name[0].lower()+".max"])
+  best_x = np.argmax(np.where((x_coords > min_best_f) & (x_coords < max_best_f), pow_avg, np.zeros(pow_avg.size)), keepdims=True)
   best_pow = y_pow[:, best_x]
   best_phase = y_phase[:, best_x]
   avg_best = np.mean(best_pow*np.cos(np.deg2rad(best_phase)) + best_pow*np.sin(np.deg2rad(best_phase)) *1j)

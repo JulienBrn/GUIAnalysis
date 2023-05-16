@@ -214,6 +214,13 @@
           </property>
          </widget>
         </item>
+        <item>
+         <widget class="QPushButton" name="exportall">
+          <property name="text">
+           <string>Export All Figures</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
      </widget>
