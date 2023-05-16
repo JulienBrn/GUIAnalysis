@@ -68,8 +68,12 @@ class GetDataframe(QThread):
       super().__init__()
       self.df = df
    def run(self):
+    try:
       res = self.df.get_df().reset_index(drop=True)
       self.dfcomputed.emit(res)
+    except:
+      logger.error("Impossible to get dataframe")
+      self.dfcomputed.emit(pd.DataFrame([], columns=["Error"]))
 
 class ViewResult(QThread):
    ready = pyqtSignal(int)

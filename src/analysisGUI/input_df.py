@@ -18,7 +18,11 @@ def mk_monkey_input(base_folder , rescan) -> pd.DataFrame :
    if rescan:
       df_handle.invalidate_all()
    df: pd.DataFrame = df_handle.get_result()
-   metadata_df: pd.DataFrame = pd.read_csv(base_folder + "/BothMonkData_withTime.csv", sep=",")
+   try:
+     metadata_df: pd.DataFrame = pd.read_csv(base_folder + "/BothMonkData_withTime.csv", sep=",")
+   except:
+     logger.warning("BothMonkData_withTime.csv file necessary for monkey metadata not found at {}. Continuing without monkey data...".format(base_folder + "/BothMonkData_withTime.csv"))
+     return pd.DataFrame([], columns=["path", "filename", "ext", "Species", "Condition", "Subject", "Date", "Session", "SubSessionInfo", "SubSessionInfoType",  "Structure", "Channel", "signal_type", "signal_fs", "file_path", "file_keys"])
    metadata_df["Structure"] = metadata_df["Structure"].str.slice(0,3)
    metadata_df["filename"] = "unit"+ metadata_df["unit"].astype(str)
    df = df.merge(metadata_df, how="left", on=["Condition", "Subject", "Structure", "Date", "filename"])
@@ -270,6 +274,7 @@ class InputDataDF:
 
   
 def _get_df(dataframe_manager, computation_m, metadata):
+ try:
   INPUT_Columns = ["Species", "Condition", "Subject", "Date", "Session", "SubSessionInfo", "SubSessionInfoType",  "Structure", "Channel", "signal_type", "signal_fs", "file_path", "file_keys"]
   logger.info("Getting input_df")
   logger.info("Getting monkey_df")
@@ -380,3 +385,6 @@ def _get_df(dataframe_manager, computation_m, metadata):
   final_cols = ["signal_type", "signal_fs", "signal", "Species", "Condition", "Subject", "Date", "Session", "SubSessionInfo", "SubSessionInfoType",  "Structure", "Channel or Neuron", "file_path", "file_keys"]
   
   return input_df.copy()[final_cols]
+ except:
+  logger.error("Problem getting input_df. Probably the given folder paths are wrong")
+  return pd.DataFrame([], columns=["signal_type", "signal_fs", "signal", "Species", "Condition", "Subject", "Date", "Session", "SubSessionInfo", "SubSessionInfoType",  "Structure", "Channel or Neuron", "file_path", "file_keys"])
