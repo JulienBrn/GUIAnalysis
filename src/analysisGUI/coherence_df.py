@@ -109,17 +109,18 @@ class coherenceDataDF:
       df["Condition_b"] = df.apply(lambda row: "Park" if row["Condition"] in ["pd", "Park", "mptp"] else "healthy", axis=1)
       df["aggregation_type"] = "plot"
       na_mask = df.apply(lambda row: not hasattr(row["coherence_f"], "size") or row["coherence_f"].size < 20, axis=1)
-      df = df[~na_mask].reset_index(drop=True)
       if na_mask.any():
-        logger.warning("Ignored {} results due to na".format(na_mask.sum()))
+        logger.warning("Ignored {} results due to na. Examples:\n{}".format(na_mask.sum(), df[na_mask].to_string()))
       else:
-        logger.info("all results good")
+        logger.info("no nas")
+      df = df[~na_mask].reset_index(drop=True)
       duplicate_mask = df.apply(lambda row: np.all(row["coherence_pow"] >0.95), axis=1)
-      df = df[~duplicate_mask].reset_index(drop=True)
       if duplicate_mask.any():
-        logger.warning("Ignored {} results due to duplication. Examples:\n{}".format(duplicate_mask.sum(), df[duplicate_mask].head(5).to_string()))
+        logger.warning("Ignored {} results due to duplication. Examples:\n{}".format(duplicate_mask.sum(), df[duplicate_mask].to_string()))
       else:
-        logger.info("all results good")
+        logger.info("no duplication")
+      df = df[~duplicate_mask].reset_index(drop=True)
+      
       tqdm.pandas(desc="Adding group information for coherence_df") 
       r = df.groupby(by=["Species", "Condition_b", "Structure_1", "signal_type_1", "Structure_2", "signal_type_2"]).progress_apply(lambda df: compute_group_info(df, self.view_params)).reset_index()
       

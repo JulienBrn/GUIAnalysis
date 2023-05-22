@@ -74,7 +74,7 @@ def run_gui():
         else:
             res = pd.DataFrame(zip(last_params.keys(), default_params.values(), last_params.values()), columns=["key", "default", "last"])
             res["same"] = res["default"] == res["last"]
-            logger.info("Params:\n{}".format(res.to_string()))
+            # logger.info("Params:\n{}".format(res.to_string()))
         win.on_computation_tab_clicked()
         win.tabWidget.setCurrentWidget(win.tabWidget.findChild(QWidget, "computation_tab"))
     else:
