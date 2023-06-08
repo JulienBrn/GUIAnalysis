@@ -7,7 +7,7 @@ import os
 
 logger=logging.getLogger(__name__)
 
-import sys
+import sys, time
 import matplotlib, importlib
 import matplotlib.pyplot as plt
 
@@ -53,14 +53,26 @@ class GetResult(QThread):
       model = self.model
       indices = self.indices
       df = model._dataframe
+      tqdm.pandas(desc="Getting results") 
+      i=0
+      nb_done_since=0
+      last_time = time.time()
       for index in tqdm(indices):
          for colind, col in enumerate(self.cols):
             if isinstance(df[col].iat[index], toolbox.RessourceHandle):
                df[col].iat[index].get_result()
-               model.dataChanged.emit(
-                  model.createIndex(index,colind),  model.createIndex(index+1,colind+1), (QtCore.Qt.EditRole,)
-               ) 
-         self.progress.emit(1)
+               # model.dataChanged.emit(
+               #    model.createIndex(index,colind),  model.createIndex(index+1,colind+1), (QtCore.Qt.EditRole,)
+               # ) 
+         i=i+1
+         nb_done_since=nb_done_since+1
+         curr_time = time.time()
+         if curr_time - last_time > 0.5:
+            self.progress.emit(nb_done_since)
+            model.dataChanged.emit(model.createIndex(0,0), model.createIndex(len(model._dataframe.index), len(model._dataframe.columns)), (QtCore.Qt.EditRole,)) 
+            nb_done_since=0
+            last_time =curr_time
+      self.progress.emit(nb_done_since)
 
 class GetDataframe(QThread):
    dfcomputed = pyqtSignal(pd.DataFrame)

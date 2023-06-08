@@ -173,7 +173,7 @@ def _get_df(computation_m, signal_df, coherence_params):
   tqdm.pandas(desc="Computing shape of coherence_df") 
   coherence_df = toolbox.group_and_combine(signal_df[signal_df["signal_type"].isin(["lfp_cleaned", "bua_cleaned", "spike_continuous"])], 
                                            ["Condition", "Subject", "Species", "Session", "Date", "SubSessionInfo", "SubSessionInfoType"])
-  
+  # coherence_df["is_auto"] = coherence_df["signal_1"] == coherence_df["signal_2"]
   for key,val in coherence_params.items():
     coherence_df[key] = val
 

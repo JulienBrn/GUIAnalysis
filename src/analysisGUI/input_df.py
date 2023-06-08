@@ -29,7 +29,7 @@ def mk_monkey_input(base_folder , rescan) -> pd.DataFrame :
    if len(df[df["Start"].isna()].index) > 0:
       logger.warning("Ignoring the following entries:\n{}".format(df[df["Start"].isna()]))
       df = df[~df["Start"].isna()].reset_index(drop=True)
-   print(df)
+   # print(df)
    df["Species"] = "Monkey"
    df["Session"] = "MS_#"+ df.groupby(by=["Date", "Subject"]).ngroup().astype(str)
    df["SubSessionInfo"] = list(zip(df["Start"], df["End"]))
@@ -51,6 +51,8 @@ def mk_monkey_input(base_folder , rescan) -> pd.DataFrame :
          # print(start, end)
          # print(pd.DataFrame(zip(start_times, end_times), columns=["Start", "End"]))
          # input()
+         # start_times = [start]
+         # end_times = [end]
          ret = pd.DataFrame(zip(start_times, end_times), columns=["Start", "End"])
          ret["path"] = r["path"]
          return ret
@@ -58,7 +60,7 @@ def mk_monkey_input(base_folder , rescan) -> pd.DataFrame :
       # return None
    
    subsession_df = df.groupby(by=["Session"]).apply(mk_subsession_group).reset_index()
-   print(subsession_df)
+   # print(subsession_df)
    df = subsession_df.merge(df, on=["Session", "path"], how="left", suffixes=("new", ""))
    df["SubSessionInfonew"] = list(zip(df["Startnew"], df["Endnew"]))
    df["SubSessionInfo"] = df["SubSessionInfonew"].astype(str) + "/" +  df["SubSessionInfo"].astype(str)
