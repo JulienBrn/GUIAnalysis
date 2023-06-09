@@ -34,7 +34,7 @@ class CleanDataDF:
     #  self._dataframe = self._get_df(dataframe_manager, computation_m)
 
   
-  name = "clean"
+  name = "inputs.clean"
   result_columns = ["clean_bounds", "cleaned_signal"]
 
   def get_df(self):

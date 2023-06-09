@@ -242,7 +242,7 @@ class InputDataDF:
      self.step_signals = step_signals
 
   
-  name = "inputs"
+  name = "inputs.in"
   result_columns = ["signal"]
   invalidated = True
 
@@ -388,5 +388,5 @@ def _get_df(dataframe_manager, computation_m, metadata):
   
   return input_df.copy()[final_cols]
  except:
-  logger.error("Problem getting input_df. Probably the given folder paths are wrong")
+  logger.error("Problem getting input_df. Probably the given folder paths are wrong. Metadata is \n{}".format(metadata))
   return pd.DataFrame([], columns=["signal_type", "signal_fs", "signal", "Species", "Condition", "Subject", "Date", "Session", "SubSessionInfo", "SubSessionInfoType",  "Structure", "Channel or Neuron", "file_path", "file_keys"])

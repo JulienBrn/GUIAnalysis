@@ -76,7 +76,8 @@ def run_gui():
     win.add_df(group_coherence_df)
     win.add_df(correlation_df)
 
-    if pathlib.Path("setup_params.json").exists():
+    # if pathlib.Path("setup_params.json").exists():
+    if False:
         default_params = win.get_setup_params()
         win.set_setup_params(json_loader.load(
             pathlib.Path("setup_params.json")))
@@ -92,8 +93,8 @@ def run_gui():
         win.tabWidget.setCurrentWidget(
             win.tabWidget.findChild(QWidget, "computation_tab"))
     else:
-        win.tabWidget.setCurrentWidget(
-            win.tabWidget.findChild(QWidget, "setup_tab"))
+        win.menu_tabs.setCurrentWidget(
+            win.menu_tabs.findChild(QWidget, "setup_tab"))
     # coherence_df.compute()
     # pwelch_df.compute()
     # correlation_df.compute()
