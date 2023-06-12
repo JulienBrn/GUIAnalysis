@@ -240,6 +240,7 @@ class InputDataDF:
      }
      self.invalidated = True
      self.step_signals = step_signals
+     self.tqdm = tqdm
 
   
   name = "inputs.in"
@@ -249,9 +250,10 @@ class InputDataDF:
 
 
   def get_df(self):
+     print(self.tqdm)
      signal_cols = ["Species", "Condition", "Subject", "Date", "Session", "SubSessionInfo", "SubSessionInfoType",  "Structure", "Channel or Neuron", "signal_type", "signal_fs", "signal"]
      if self.invalidated:
-        self._dataframe = _get_df(self.dataframe_manager, self.computation_m, self.metadata)
+        self._dataframe = _get_df(self.dataframe_manager, self.computation_m, self.metadata, self.tqdm)
         self.step_signals["input"] = self._dataframe.copy()[signal_cols]
         self.invalidated = False
      return self._dataframe
@@ -275,7 +277,7 @@ class InputDataDF:
 
 
   
-def _get_df(dataframe_manager, computation_m, metadata):
+def _get_df(dataframe_manager, computation_m, metadata, tqdm):
  try:
   INPUT_Columns = ["Species", "Condition", "Subject", "Date", "Session", "SubSessionInfo", "SubSessionInfoType",  "Structure", "Channel", "signal_type", "signal_fs", "file_path", "file_keys"]
   logger.info("Getting input_df")
@@ -363,6 +365,7 @@ def _get_df(dataframe_manager, computation_m, metadata):
         ret =  computation_m.declare_ressource(d["file_path"].iat[0], matlab_loader, check=False)
     return d.apply(lambda row: ret, axis=1)
 
+  print(tqdm)
   tqdm.pandas(desc="Declaring file ressources")
 
   input_df["file_ressource"] = input_df.groupby("file_path", group_keys=False).progress_apply(get_file_ressource)

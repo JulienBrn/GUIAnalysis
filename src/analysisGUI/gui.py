@@ -146,8 +146,10 @@ class Task:
       self.warnings = []
 
    def run(self):
+      from analysisGUI.patch_tqdm import patch_tqdm
       # progress_bar, name_label = self.window.create_progress_bar()
-      progress_class = tqdm.tqdm
+      progress_class = patch_tqdm(self.window.progressBar)
+      self.window.progressBar.show()
       self.status = "Running"
       def finish():
          self.onend(**self.kwargs, task_info={"errors": self.errors, "warnings": self.warnings, "progress": progress_class})
@@ -314,16 +316,21 @@ class Window(QMainWindow, Ui_MainWindow):
             return
          self.update_from_setup_params_view()
          if self.dfs[self.current_df].invalidated:
-            def mfunc(df, current_df, task_info):
-            # def mfunc(df, current_df):
-               # logger.info("called")
+
+            def computefunc(df, current_df, task_info):
+               df.tqdm = task_info["progress"]
+               print("HERE", df.tqdm)
+               # .pandas("Getting df "+df.name)
+               df.get_df()
+
+            def displayfunc(df, current_df, task_info):
                ndf = df.get_df().reset_index(drop=True)
                if self.current_df == current_df:
                   self.tableView.setModel(DataFrameModel(ndf))
-            # ndf = self.dfs[self.current_df].get_df().reset_index(drop=True)
-            # self.tableView.setModel(DataFrameModel(ndf))
+
+
             self.add_task(Task(self, "compute df {}".format(self.dfs[self.current_df].name), 
-                               lambda df, current_df, task_info: True, mfunc, lambda df, current_df, task_info: df.get_df(), 
+                               lambda df, current_df, task_info: True, displayfunc, computefunc, 
                                {"df":self.dfs[self.current_df], "current_df": self.current_df}))
          else:
             self.tableView.setModel(DataFrameModel(self.dfs[self.current_df].get_df()))
