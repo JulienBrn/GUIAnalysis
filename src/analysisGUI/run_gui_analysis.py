@@ -8,7 +8,24 @@ from analysisGUI import CleanDataDF
 from analysisGUI import InputDataDF
 from analysisGUI import Window
 from analysisGUI import group_coherenceDataDF
+from analysisGUI.Inputs.Monkey.read_monkey_files import ReadMonkeyFiles
+from analysisGUI.Inputs.Monkey.parse_monkey_files import ParseMonkeyFiles
+from analysisGUI.Inputs.Monkey.read_monkey_database import ReadMonkeyDataBase
+from analysisGUI.Inputs.Monkey.merge_monkey_data import MergeMonkeyData
+from analysisGUI.Inputs.Monkey.parse_monkey_db import ParseMonkeyDataBase
+from analysisGUI.Inputs.Monkey.add_monkey_metadata import AddMonkeyMetadata
+from analysisGUI.Inputs.Monkey.declare_monkey_raw import DeclareMonkeyRaw
+from analysisGUI.Inputs.Monkey.declare_monkey_spikes import DeclareMonkeySpikes
+from analysisGUI.Inputs.Monkey.merge_monkey_signals import MergeMonkeySignals
+from analysisGUI.Inputs.Human.STN.read_human_database import ReadHumanSTNDataBase
+from analysisGUI.Inputs.Human.STN.human_stn_db_files import HumanSTNDatabaseFiles
+from analysisGUI.Inputs.Human.STN.parse_human_db import ParseHumanSTNDataBase
+from analysisGUI.Inputs.Human.STN.read_human_files import ReadHumanSTNFiles
+from analysisGUI.Inputs.Human.STN.parse_human_files import ParseHumanSTNFiles
+from analysisGUI.Inputs.Human.STN.merge_human_data import MergeHumanSTNData
+
 from toolbox import Manager, json_loader, np_loader, df_loader, float_loader, matlab_loader, matlab73_loader, read_folder_as_database, mk_block, replace_artefacts_with_nans2
+import toolbox
 import logging
 import beautifullogger
 import pathlib
@@ -49,9 +66,27 @@ dataframe_manager = Manager("./cache/dataframes")
 step_signals = {}
 
 
+
 def run_gui():
     app = QApplication(sys.argv)
     win = Window()
+    read_monkey_files = ReadMonkeyFiles(computation_m)
+    parse_monkey_files = ParseMonkeyFiles(read_monkey_files, computation_m)
+    read_monkey_db = ReadMonkeyDataBase(computation_m)
+    parse_monkey_db = ParseMonkeyDataBase(read_monkey_db, computation_m)
+    merge_monkey_data = MergeMonkeyData(parse_monkey_files, parse_monkey_db, computation_m)
+    add_monkey_md = AddMonkeyMetadata(merge_monkey_data, computation_m)
+    monkey_raw = DeclareMonkeyRaw(add_monkey_md, computation_m)
+    monkey_spikes = DeclareMonkeySpikes(add_monkey_md, computation_m)
+    monkey_signals = MergeMonkeySignals(monkey_raw, monkey_spikes, computation_m)
+    
+    read_human_stn_files = ReadHumanSTNFiles(computation_m)
+    parse_human_stn_files = ParseHumanSTNFiles(read_human_stn_files, computation_m)
+    humam_stn_db_files = HumanSTNDatabaseFiles(computation_m)
+    read_human_stn_db = ReadHumanSTNDataBase(humam_stn_db_files, computation_m)
+    parse_human_stn_db = ParseHumanSTNDataBase(read_human_stn_db, computation_m)
+    merge_human_stn_data = MergeHumanSTNData(parse_human_stn_files, parse_human_stn_db, computation_m)
+
     input_df = InputDataDF(dataframe_manager, computation_m, step_signals)
     clean_df = CleanDataDF(computation_m, step_signals, input_df)
     lfp_df = LFPDataDF(computation_m, step_signals, clean_df)
@@ -65,16 +100,34 @@ def run_gui():
     correlation_df = correlationDataDF(
         computation_m, step_signals, spike_continuous_df)
     
+    win.add_df(read_monkey_files)
+    win.add_df(parse_monkey_files)
+    win.add_df(read_monkey_db)
+    win.add_df(merge_monkey_data)
+    win.add_df(parse_monkey_db)
+    win.add_df(add_monkey_md)
+    win.add_df(monkey_raw)
+    win.add_df(monkey_spikes)
+    win.add_df(monkey_signals)
 
-    win.add_df(input_df)
-    win.add_df(clean_df)
-    win.add_df(lfp_df)
-    win.add_df(bua_df)
-    win.add_df(spike_continuous_df)
-    win.add_df(pwelch_df)
-    win.add_df(coherence_df)
-    win.add_df(group_coherence_df)
-    win.add_df(correlation_df)
+    win.add_df(read_human_stn_files)
+    win.add_df(parse_human_stn_files)
+    win.add_df(humam_stn_db_files)
+    win.add_df(read_human_stn_db)
+    win.add_df(parse_human_stn_db)
+    win.add_df(merge_human_stn_data)
+
+
+
+    # win.add_df(input_df)
+    # win.add_df(clean_df)
+    # win.add_df(lfp_df)
+    # win.add_df(bua_df)
+    # win.add_df(spike_continuous_df)
+    # win.add_df(pwelch_df)
+    # win.add_df(coherence_df)
+    # win.add_df(group_coherence_df)
+    # win.add_df(correlation_df)
 
     # if pathlib.Path("setup_params.json").exists():
     if False:

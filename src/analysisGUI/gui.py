@@ -37,90 +37,133 @@ from analysisGUI.mplwidget import MplCanvas, MplWidget
 
 import PyQt5.QtGui as QtGui
 import traceback
+import tqdm
 
-def mk_result_tab():
-   result_tab = QtWidgets.QWidget()
-   verticalLayout_4 = QtWidgets.QVBoxLayout(result_tab)
-   mpl = MplWidget(result_tab)
-   verticalLayout_4.addWidget(mpl)
-   toolbar = NavigationToolbar(mpl.canvas, parent=result_tab)
-   return result_tab, mpl
+# def mk_result_tab():
+#    result_tab = QtWidgets.QWidget()
+#    verticalLayout_4 = QtWidgets.QVBoxLayout(result_tab)
+#    mpl = MplWidget(result_tab)
+#    verticalLayout_4.addWidget(mpl)
+#    toolbar = NavigationToolbar(mpl.canvas, parent=result_tab)
+#    return result_tab, mpl
 
-class GetResult(QThread):
-   progress = pyqtSignal(int)
-   def __init__(self, model, indices, cols):
-      super().__init__()
-      self.model = model
-      self.indices = indices
-      self.cols = cols
-   def run(self):
-      model = self.model
-      indices = self.indices
-      df = model._dataframe
-      tqdm.pandas(desc="Getting results") 
-      i=0
-      nb_done_since=0
-      last_time = time.time()
-      for index in tqdm(indices):
-         for colind, col in enumerate(self.cols):
-            if isinstance(df[col].iat[index], toolbox.RessourceHandle):
-               df[col].iat[index].get_result()
-               # model.dataChanged.emit(
-               #    model.createIndex(index,colind),  model.createIndex(index+1,colind+1), (QtCore.Qt.EditRole,)
-               # ) 
-         i=i+1
-         nb_done_since=nb_done_since+1
-         curr_time = time.time()
-         if curr_time - last_time > 0.5:
-            self.progress.emit(nb_done_since)
-            model.dataChanged.emit(model.createIndex(0,0), model.createIndex(len(model._dataframe.index), len(model._dataframe.columns)), (QtCore.Qt.EditRole,)) 
-            nb_done_since=0
-            last_time =curr_time
-      self.progress.emit(nb_done_since)
+# class GetResult(QThread):
+#    progress = pyqtSignal(int)
+#    def __init__(self, model, indices, cols):
+#       super().__init__()
+#       self.model = model
+#       self.indices = indices
+#       self.cols = cols
+#    def run(self):
+#       model = self.model
+#       indices = self.indices
+#       df = model._dataframe
+#       tqdm.pandas(desc="Getting results") 
+#       i=0
+#       nb_done_since=0
+#       last_time = time.time()
+#       for index in tqdm(indices):
+#          for colind, col in enumerate(self.cols):
+#             if isinstance(df[col].iat[index], toolbox.RessourceHandle):
+#                df[col].iat[index].get_result()
+#                # model.dataChanged.emit(
+#                #    model.createIndex(index,colind),  model.createIndex(index+1,colind+1), (QtCore.Qt.EditRole,)
+#                # ) 
+#          i=i+1
+#          nb_done_since=nb_done_since+1
+#          curr_time = time.time()
+#          if curr_time - last_time > 0.5:
+#             self.progress.emit(nb_done_since)
+#             model.dataChanged.emit(model.createIndex(0,0), model.createIndex(len(model._dataframe.index), len(model._dataframe.columns)), (QtCore.Qt.EditRole,)) 
+#             nb_done_since=0
+#             last_time =curr_time
+#       self.progress.emit(nb_done_since)
 
-class GetDataframe(QThread):
-   dfcomputed = pyqtSignal(pd.DataFrame)
-   def __init__(self, df):
-      super().__init__()
-      self.df = df
-   def run(self):
-    try:
-      res = self.df.get_df().reset_index(drop=True)
-      self.dfcomputed.emit(res)
-    except:
-      logger.error("Impossible to get dataframe")
-      self.dfcomputed.emit(pd.DataFrame([], columns=["Error"]))
+# class GetDataframe(QThread):
+#    dfcomputed = pyqtSignal(pd.DataFrame)
+#    def __init__(self, df):
+#       super().__init__()
+#       self.df = df
+#    def run(self):
+#     try:
+#       res = self.df.get_df().reset_index(drop=True)
+#       self.dfcomputed.emit(res)
+#     except:
+#       logger.error("Impossible to get dataframe")
+#       self.dfcomputed.emit(pd.DataFrame([], columns=["Error"]))
 
-class ViewResult(QThread):
-   ready = pyqtSignal(int)
-   def __init__(self, df, result_tabs, rows):
-      super().__init__()
-      self.df = df
-      if hasattr(df, "get_nb_figs"):
-         nb_figs = df.get_nb_figs(rows)
-      else:
-         nb_figs = 1
-      self.canvas=[]
-      for i in range(nb_figs):
-         result_tab, mpl = mk_result_tab()
-         self.canvas.append(mpl.canvas)
-         result_tabs.addTab(result_tab, "res"+str(i))
-      self.rows = rows
-   def run(self):
-      if hasattr(self.df, "show_figs"):
-         for l in self.df.show_figs(self.rows, self.canvas):
-            logger.info("Emitting {}".format(l))
-            for i in l:
-               self.ready.emit(i)
-      else:
-         canvas = self.canvas[0]
-         if len(self.rows.index) == 1 or not hasattr(self.df, "view_items"):
-            self.df.view_item(canvas, self.rows.iloc[0, :])
-         else:
-            self.df.view_items(canvas, self.rows)
-         self.ready.emit(0)
-from datetime import datetime
-class Task:
+# class ViewResult(QThread):
+#    ready = pyqtSignal(int)
+#    def __init__(self, df, result_tabs, rows):
+#       super().__init__()
+#       self.df = df
+#       if hasattr(df, "get_nb_figs"):
+#          nb_figs = df.get_nb_figs(rows)
+#       else:
+#          nb_figs = 1
+#       self.canvas=[]
+#       for i in range(nb_figs):
+#          result_tab, mpl = mk_result_tab()
+#          self.canvas.append(mpl.canvas)
+#          result_tabs.addTab(result_tab, "res"+str(i))
+#       self.rows = rows
+#    def run(self):
+#       if hasattr(self.df, "show_figs"):
+#          for l in self.df.show_figs(self.rows, self.canvas):
+#             logger.info("Emitting {}".format(l))
+#             for i in l:
+#                self.ready.emit(i)
+#       else:
+#          canvas = self.canvas[0]
+#          if len(self.rows.index) == 1 or not hasattr(self.df, "view_items"):
+#             self.df.view_item(canvas, self.rows.iloc[0, :])
+#          else:
+#             self.df.view_items(canvas, self.rows)
+#          self.ready.emit(0)
+# from datetime import datetime
+
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QTableView, QMainWindow, QFileDialog, QMenu, QAction
+from PyQt5.QtGui import QIcon, QImage, QStandardItem, QStandardItemModel, QMovie, QCursor
+from PyQt5.QtCore import pyqtSlot, QItemSelectionModel, QModelIndex
+
+      
+
+
+class GUIDataFrame:
+   name: str
+   metadata: Dict[str, str]
+   tqdm: tqdm.tqdm
+   # invalidated: False
+   _dataframe: toolbox.RessourceHandle[pd.DataFrame]
+
+   def __init__(self, name, metadata, df_ressource_manager: toolbox.Manager, other_dfs={}, save=False, alternative_names =[]):
+      self.name = name
+      self.alternative_names =alternative_names
+      self.metadata = metadata
+      for df in other_dfs.values():
+         self.metadata = {**self.metadata, **df.metadata}
+      self.tqdm = tqdm.tqdm
+      self.invalidated = True
+      def mcompute_df(**kwargs):
+         logger.info("Computing df {}".format(self.name))
+         for t in other_dfs.values():
+            t.tqdm = self.tqdm
+         ret= self.compute_df(**kwargs)
+         logger.info("Done Computing df {}".format(self.name))
+         return ret
+      self._dataframe = df_ressource_manager.declare_computable_ressource(mcompute_df, {n:df._dataframe for n, df in other_dfs.items()}, df_loader, "Dataframe {}".format(self.name), save)
+
+   def get_df(self) -> pd.DataFrame: 
+      return self._dataframe.get_result()
+      if self.invalidated:
+         self._dataframe = self.compute_df()
+         self.invalidated = False
+      return self._dataframe
+   
+   def compute_df(self):
+      raise NotImplementedError("Abstract method compute_df of GUIDataFrame")
+
+class Task(QtCore.QObject):
    name: str
    status: Union["Pending", "Running", "Cancelled", "Aborted", "Finished"]
 
@@ -133,8 +176,10 @@ class Task:
    warnings: List[Any]
    progress: tqdm.tqdm
 
+   update_signal = pyqtSignal(float, float, str)
 
    def __init__(self, window, name, onstart, onend, run, kwargs):
+      super().__init__()
       self.window = window
       self.name = name
       self.status="Pending"
@@ -145,10 +190,17 @@ class Task:
       self.errors = []
       self.warnings = []
 
+      self.update_signal.connect(lambda cur, total, display: self.update_bar(cur, total, display))
+
+   def update_bar(self, cur, total, display_str):
+      progress_bar = self.window.progressBar
+      progress_bar.setMaximum(int(total))
+      progress_bar.setValue(int(cur))
+      progress_bar.setFormat(display_str)
+
    def run(self):
       from analysisGUI.patch_tqdm import patch_tqdm
-      # progress_bar, name_label = self.window.create_progress_bar()
-      progress_class = patch_tqdm(self.window.progressBar)
+      progress_class = patch_tqdm(self.update_signal)
       self.window.progressBar.show()
       self.status = "Running"
       def finish():
@@ -185,25 +237,8 @@ class TaskThread(QThread):
          raise e
       except BaseException as e:
          logger.error("error while computing: {}".format(e))
-         self.errors.append(e)
+         self.err.append(e)
 
-import tqdm
-from analysisGUI.patch_tqdm import patch_tqdm
-class ThreadTask(QThread):
-   update = pyqtSignal()
-   def __init__(self, t: Task):
-      super().__init__()
-      self.t = t
-      t.thread = self
-   def run(self):
-      logger.info("r called")
-      m = patch_tqdm(self.t.progress)
-      m.pandas(desc = "test")
-      df = pd.DataFrame(np.arange(1000).reshape(-1, 10))
-      df.progress_apply(lambda x: time.sleep(1), axis=1)
-      # for i in tqdm.tqdm(range(1000)):
-      #    time.sleep(1)
-      # self.t.run()
 
 class Window(QMainWindow, Ui_MainWindow):
    setup_ready = pyqtSignal(dict)
@@ -211,7 +246,8 @@ class Window(QMainWindow, Ui_MainWindow):
    tasks: List[Task]
    task_num: int
    current_df: int
-   process: ThreadTask
+
+   tableView: QTableView
 
    def __init__(self, parent=None):
       super().__init__(parent)
@@ -311,29 +347,33 @@ class Window(QMainWindow, Ui_MainWindow):
          full_name.reverse()
          full_name = ".".join(full_name)
          try:
-            self.current_df = [i for i, df in enumerate(self.dfs) if df.name == full_name][0]
+            self.current_df = [i for i, df in enumerate(self.dfs) if df.name == full_name or full_name in df.alternative_names][0]
          except:
+
             return
          self.update_from_setup_params_view()
-         if self.dfs[self.current_df].invalidated:
 
-            def computefunc(df, current_df, task_info):
+         def computefunc(df, current_df, task_info):
                df.tqdm = task_info["progress"]
-               print("HERE", df.tqdm)
                # .pandas("Getting df "+df.name)
                df.get_df()
 
-            def displayfunc(df, current_df, task_info):
-               ndf = df.get_df().reset_index(drop=True)
-               if self.current_df == current_df:
-                  self.tableView.setModel(DataFrameModel(ndf))
+         def displayfunc(df, current_df, task_info):
+            ndf = df.get_df().reset_index(drop=True)
+            if self.current_df == current_df:
+               self.tableView.setModel(DataFrameModel(ndf))
+               # self.tableView.resizeColumnsToContents()
+
+         if self.dfs[self.current_df].invalidated:
+
+
 
 
             self.add_task(Task(self, "compute df {}".format(self.dfs[self.current_df].name), 
                                lambda df, current_df, task_info: True, displayfunc, computefunc, 
                                {"df":self.dfs[self.current_df], "current_df": self.current_df}))
          else:
-            self.tableView.setModel(DataFrameModel(self.dfs[self.current_df].get_df()))
+            displayfunc(self.dfs[self.current_df], self.current_df, None)
 
    def select_df(self, index):
       name = self.dfs[index].name
