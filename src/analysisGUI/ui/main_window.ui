@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="menu_tabs">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="setup_tab">
        <attribute name="title">
@@ -140,7 +140,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QTableView" name="tableView"/>
+             <widget class="MTableView" name="tableView"/>
             </item>
             <item>
              <widget class="QWidget" name="compute_btn_menu" native="true">
@@ -258,19 +258,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="label">
-         <property name="font">
-          <font>
-           <pointsize>6</pointsize>
-          </font>
-         </property>
-         <property name="text">
-          <string>previous_tasks</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="pushButton">
+        <widget class="QPushButton" name="aborttask">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -289,7 +277,7 @@
           </font>
          </property>
          <property name="text">
-          <string>|</string>
+          <string>X</string>
          </property>
         </widget>
        </item>
@@ -310,6 +298,13 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>MTableView</class>
+   <extends>QTableView</extends>
+   <header>analysisGUI.mtableview.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

@@ -9,19 +9,19 @@ class ParseHumanSTNDataBase(GUIDataFrame):
         super().__init__("inputs.human.stn.db.parsed", {}, computation_m, {"db":rd_human_stn_db}, alternative_names=["inputs.human.stn.db"])
         self.computation_m = computation_m
     
-    def compute_df(self, db):
+    def compute_df(self, db: pd.DataFrame):
         df =  db.copy()
         meta = df['StructDateH'].astype(str).str.isdigit()
         df.loc[meta, 'StructDateH'] = np.nan
         df['StructDateH'].ffill(inplace=True)
-        # df["file"] = df["file"].str.replace(".map", ".mat")
+        df['StructDateH'] = df['StructDateH'].str.replace("\\", "/")
         df= df.loc[meta, :].reset_index(drop=True)
         df["Species"] = "Human"
         df["Condition"] = "Park"
         df["Structure"] = "STN_"+ df['StructDateH'].str.slice(0,4)
         df["Date"] = df['StructDateH'].str.slice(5,15)
         df["Hemisphere"] = df['StructDateH'].str.slice(16)
-        df["Electrode"] = df["channel"]
+        df["Electrode"] = df.pop("channel").astype(int)
         df["Depth"] = df["file"].str.extract('(\d+)').astype(str)
         df["Subject"] = np.nan
         df["file_path"] = df["Structure"] + "/" + df['StructDateH'].str.slice(5) + "/"+ df["file"].str.replace("map", "mat")

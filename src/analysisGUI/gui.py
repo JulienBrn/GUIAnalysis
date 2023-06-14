@@ -133,10 +133,10 @@ class GUIDataFrame:
    name: str
    metadata: Dict[str, str]
    tqdm: tqdm.tqdm
-   # invalidated: False
    _dataframe: toolbox.RessourceHandle[pd.DataFrame]
 
-   def __init__(self, name, metadata, df_ressource_manager: toolbox.Manager, other_dfs={}, save=False, alternative_names =[]):
+   def __init__(self, name,metadata: Dict[str, Tuple[str, str]], df_ressource_manager: toolbox.Manager, other_dfs={}, save=False, alternative_names =[]):
+      #Metadata param should be handled by func
       self.name = name
       self.alternative_names =alternative_names
       self.metadata = metadata
@@ -155,10 +155,6 @@ class GUIDataFrame:
 
    def get_df(self) -> pd.DataFrame: 
       return self._dataframe.get_result()
-      if self.invalidated:
-         self._dataframe = self.compute_df()
-         self.invalidated = False
-      return self._dataframe
    
    def compute_df(self):
       raise NotImplementedError("Abstract method compute_df of GUIDataFrame")
@@ -178,6 +174,8 @@ class Task(QtCore.QObject):
 
    update_signal = pyqtSignal(float, float, str)
 
+   process: TaskThread
+
    def __init__(self, window, name, onstart, onend, run, kwargs):
       super().__init__()
       self.window = window
@@ -191,6 +189,7 @@ class Task(QtCore.QObject):
       self.warnings = []
 
       self.update_signal.connect(lambda cur, total, display: self.update_bar(cur, total, display))
+      self.process=None
 
    def update_bar(self, cur, total, display_str):
       progress_bar = self.window.progressBar
@@ -218,6 +217,11 @@ class Task(QtCore.QObject):
          tb = traceback.format_exc()
          logger.error("error while computing: {}. Traceback:\n{}".format(e, tb))
          self.errors.append(e)
+
+   def abort(self):
+      if not self.process is None:
+         self.process.terminate()
+
       
 
 
@@ -273,8 +277,12 @@ class Window(QMainWindow, Ui_MainWindow):
          # logger.info("done running task {}".format(t.name))
          # self.current_exec.setText(t.name)
    
-   def process_task(self):
+   def process_task(self, abort_cur=False):
       while self.task_num < len(self.tasks) and not self.tasks[self.task_num].status in ["Pending", "Running"]:
+         self.task_num+=1
+
+      if abort_cur:
+         self.tasks[self.task_num].abort()
          self.task_num+=1
 
       if self.task_num >= len(self.tasks):
@@ -283,6 +291,7 @@ class Window(QMainWindow, Ui_MainWindow):
          return
       else:
          t = self.tasks[self.task_num]
+         
          # t.progress = self.progressBar #TOREMOVE
          if t.status =="Running":
             return
@@ -301,6 +310,8 @@ class Window(QMainWindow, Ui_MainWindow):
          # self.progressBar.setMaximum(t.max)
          # logger.info("running task {}".format(t.name))
          # self.process.start()
+         nb_unprocessed = len(self.tasks) - self.task_num
+         self.current_exec.setText("{} running, {} waiting".format(1, nb_unprocessed-1))
          t.run()
 
       
@@ -311,9 +322,10 @@ class Window(QMainWindow, Ui_MainWindow):
       self.compute.clicked.connect(lambda:self.add_task(self.mk_compute_task([i.row() for i in self.tableView.selectionModel().selectedRows()])))
       # self.view.clicked.connect(lambda: view([i.row() for i in self.tableView.selectionModel().selectedRows()]))
       # self.exportall.clicked.connect(lambda: self.export_all_figures())
-      # self.export_btn.clicked.connect(self.save_df_file_dialog)
+      self.export_btn.clicked.connect(self.save_df_file_dialog)
       # self.next.clicked.connect(get_next)
       # self.previous.clicked.connect(get_prev)
+      self.aborttask.clicked.connect(lambda: self.process_task(abort_cur=True))
       self.menu_tabs.currentChanged.connect(lambda index: self.on_computation_tab_clicked() if index==1 else None)
       self.dataframe_list.clicked.connect(lambda index: self.reload_from_selection())
 
@@ -325,11 +337,13 @@ class Window(QMainWindow, Ui_MainWindow):
       sp_retain =self.progressBar.sizePolicy()
       sp_retain.setRetainSizeWhenHidden(True)
       self.progressBar.setSizePolicy(sp_retain)
+      self.dataframe_list.expandAll()
 
    def add_df(self, df):
       self.dfs.append(df)
       self.reload_dfs_list_view()
       self.reload_setup_params_view()
+      self.dataframe_list.expandAll()
 
    #### HANDLING OF DF LIST OBJECT ################
    def reload_dfs_list_view(self):
@@ -359,9 +373,19 @@ class Window(QMainWindow, Ui_MainWindow):
                df.get_df()
 
          def displayfunc(df, current_df, task_info):
-            ndf = df.get_df().reset_index(drop=True)
+            ndf = df.get_df()
             if self.current_df == current_df:
-               self.tableView.setModel(DataFrameModel(ndf))
+               try:
+                  self.tableView.setModel(DataFrameModel(ndf.reset_index(drop=True)))
+               except BaseException as e:
+                  display = [str(e), str(traceback.format_exc())]
+                  if isinstance(ndf, toolbox.Error):
+                     string = str(ndf)
+                     for s in string.split("\n"):
+                        display.append(s)
+                  self.tableView.setModel(DataFrameModel(pd.DataFrame([[e] for e in display], columns=["Error"])))
+                  self.tableView.resizeColumnsToContents()
+                  self.tableView.resizeRowsToContents()
                # self.tableView.resizeColumnsToContents()
 
          if self.dfs[self.current_df].invalidated:
@@ -715,17 +739,17 @@ class Window(QMainWindow, Ui_MainWindow):
    #      rec_print(val, "")
    #    return params
         
-   #  def save_df_file_dialog(self):
-   #      filename, ok = QFileDialog.getSaveFileName(
-   #          self,
-   #          "Select file to export to", 
-   #          filter = "(*.tsv)"
-   #      )
-   #      if filename:
-   #          to_save_df = self.dfs[self.curr_df].get_df()
-   #          to_save_df["coherence_pow_path"] = to_save_df.apply(lambda row: str(row["coherence_pow"].get_disk_path()), axis=1)
-   #          to_save_df["coherence_pow_core_path"] = to_save_df.apply(lambda row: str(row["coherence_pow"].manager.d[row["coherence_pow"].id]._core_path), axis=1)
-   #          df_loader.save(filename, to_save_df)
+   def save_df_file_dialog(self):
+      filename, ok = QFileDialog.getSaveFileName(
+         self,
+         "Select file to export to", 
+         filter = "(*.tsv)"
+      )
+      if filename:
+         to_save_df = self.dfs[self.current_df].get_df()
+         # to_save_df["coherence_pow_path"] = to_save_df.apply(lambda row: str(row["coherence_pow"].get_disk_path()), axis=1)
+         # to_save_df["coherence_pow_core_path"] = to_save_df.apply(lambda row: str(row["coherence_pow"].manager.d[row["coherence_pow"].id]._core_path), axis=1)
+         df_loader.save(filename, to_save_df)
 
    #  def export_all_figures(self):
    #     dir = QFileDialog.getExistingDirectory(self, "Select folder to export to")

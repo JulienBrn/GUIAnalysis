@@ -10,7 +10,7 @@ class HumanSTNDatabaseFiles(GUIDataFrame):
         super().__init__("inputs.human.stn.db.list", 
             {
                 "inputs.human.stn.db.base_folder":
-                    "/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/Human_STN_Correct",
+                    "/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/Human_STN_Correct_All",
                 "inputs.human.stn.db.file_pattern":"{base_folder}/all_Sorting_data_{structure}_Part{part}.mat",
                 "inputs.human.stn.db.key_pattern":"allSortingResultsDatabase_{structure}_{part}",
                 "inputs.human.stn.db.part_range":"(1, 4)",

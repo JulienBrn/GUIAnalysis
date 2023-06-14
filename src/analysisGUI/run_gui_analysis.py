@@ -22,7 +22,21 @@ from analysisGUI.Inputs.Human.STN.human_stn_db_files import HumanSTNDatabaseFile
 from analysisGUI.Inputs.Human.STN.parse_human_db import ParseHumanSTNDataBase
 from analysisGUI.Inputs.Human.STN.read_human_files import ReadHumanSTNFiles
 from analysisGUI.Inputs.Human.STN.parse_human_files import ParseHumanSTNFiles
+from analysisGUI.Inputs.Human.STN.parsed_neuron_db import ParsedHumanSTNNeuronDataBase
+from analysisGUI.Inputs.Human.STN.parsed_mua_db import ParsedHumanSTNMUADataBase
 from analysisGUI.Inputs.Human.STN.merge_human_data import MergeHumanSTNData
+from analysisGUI.Inputs.Human.STN.filter_human_data import FilterHumanSTNData
+from analysisGUI.Inputs.Human.Other.parse_files import ParseHumanOtherFiles
+from analysisGUI.Inputs.Human.Other.read_database import ReadHumanOtherDataBase
+from analysisGUI.Inputs.Human.Other.read_files import ReadHumanOtherFiles
+from analysisGUI.Inputs.Human.Other.merge_data import MergeHumanOtherData
+from analysisGUI.Inputs.Human.Other.add_metadata import AddHumanOtherMetadata
+from analysisGUI.Inputs.Human.Other.declare_mua import DeclareHumanOtherMUA
+from analysisGUI.Inputs.Human.Other.declare_spikes import DeclareHumanOtherSpikes
+from analysisGUI.Inputs.Human.Other.merge_signals import MergeHumanOtherSignals
+from analysisGUI.Inputs.Human.merged import MergeHumanSignals
+
+
 
 from toolbox import Manager, json_loader, np_loader, df_loader, float_loader, matlab_loader, matlab73_loader, read_folder_as_database, mk_block, replace_artefacts_with_nans2
 import toolbox
@@ -82,23 +96,35 @@ def run_gui():
     
     read_human_stn_files = ReadHumanSTNFiles(computation_m)
     parse_human_stn_files = ParseHumanSTNFiles(read_human_stn_files, computation_m)
-    humam_stn_db_files = HumanSTNDatabaseFiles(computation_m)
-    read_human_stn_db = ReadHumanSTNDataBase(humam_stn_db_files, computation_m)
+    human_stn_db_files = HumanSTNDatabaseFiles(computation_m)
+    read_human_stn_db = ReadHumanSTNDataBase(human_stn_db_files, computation_m)
     parse_human_stn_db = ParseHumanSTNDataBase(read_human_stn_db, computation_m)
-    merge_human_stn_data = MergeHumanSTNData(parse_human_stn_files, parse_human_stn_db, computation_m)
+    parsed_human_stn_neuron_db = ParsedHumanSTNNeuronDataBase(parse_human_stn_db, computation_m)
+    parsed_human_stn_mua_db = ParsedHumanSTNMUADataBase(parse_human_stn_db, computation_m)
+    merge_human_stn_data = MergeHumanSTNData(parse_human_stn_files, parsed_human_stn_mua_db, parsed_human_stn_neuron_db, computation_m)
+    filter_human_stn_data = FilterHumanSTNData(merge_human_stn_data, computation_m)
 
-    input_df = InputDataDF(dataframe_manager, computation_m, step_signals)
-    clean_df = CleanDataDF(computation_m, step_signals, input_df)
-    lfp_df = LFPDataDF(computation_m, step_signals, clean_df)
-    bua_df = BUADataDF(computation_m, step_signals, clean_df)
-    spike_continuous_df = SpikeContinuousDataDF(
-        computation_m, step_signals, input_df)
-    pwelch_df = pwelchDataDF(computation_m, step_signals, lfp_df, bua_df)
-    coherence_df = coherenceDataDF(
-        computation_m, step_signals, lfp_df, bua_df, spike_continuous_df)
-    group_coherence_df = group_coherenceDataDF(computation_m,coherence_df)
-    correlation_df = correlationDataDF(
-        computation_m, step_signals, spike_continuous_df)
+    read_human_other_files = ReadHumanOtherFiles(computation_m)
+    parse_human_other_files = ParseHumanOtherFiles(read_human_other_files, computation_m)
+    read_human_other_db = ReadHumanOtherDataBase(computation_m)
+    merge_human_other_data = MergeHumanOtherData(parse_human_other_files, read_human_other_db, computation_m)
+    add_human_other_md = AddHumanOtherMetadata(merge_human_other_data, computation_m)
+    human_other_mua = DeclareHumanOtherMUA(add_human_other_md, computation_m)
+    human_other_spikes = DeclareHumanOtherSpikes(add_human_other_md, computation_m)
+    human_other_signals = MergeHumanOtherSignals(human_other_mua, human_other_spikes, computation_m)
+    human_signals = MergeHumanSignals(filter_human_stn_data, human_other_signals, computation_m)
+    # input_df = InputDataDF(dataframe_manager, computation_m, step_signals)
+    # clean_df = CleanDataDF(computation_m, step_signals, input_df)
+    # lfp_df = LFPDataDF(computation_m, step_signals, clean_df)
+    # bua_df = BUADataDF(computation_m, step_signals, clean_df)
+    # spike_continuous_df = SpikeContinuousDataDF(
+    #     computation_m, step_signals, input_df)
+    # pwelch_df = pwelchDataDF(computation_m, step_signals, lfp_df, bua_df)
+    # coherence_df = coherenceDataDF(
+    #     computation_m, step_signals, lfp_df, bua_df, spike_continuous_df)
+    # group_coherence_df = group_coherenceDataDF(computation_m,coherence_df)
+    # correlation_df = correlationDataDF(
+    #     computation_m, step_signals, spike_continuous_df)
     
     win.add_df(read_monkey_files)
     win.add_df(parse_monkey_files)
@@ -112,13 +138,24 @@ def run_gui():
 
     win.add_df(read_human_stn_files)
     win.add_df(parse_human_stn_files)
-    win.add_df(humam_stn_db_files)
+    win.add_df(human_stn_db_files)
     win.add_df(read_human_stn_db)
     win.add_df(parse_human_stn_db)
+    win.add_df(parsed_human_stn_neuron_db)
+    win.add_df(parsed_human_stn_mua_db)
     win.add_df(merge_human_stn_data)
+    win.add_df(filter_human_stn_data)
 
+    win.add_df(read_human_other_files)
+    win.add_df(parse_human_other_files)
+    win.add_df(read_human_other_db)
+    win.add_df(merge_human_other_data)
+    win.add_df(add_human_other_md)
+    win.add_df(human_other_mua)
+    win.add_df(human_other_spikes)
+    win.add_df(human_other_signals)
 
-
+    win.add_df(human_signals)
     # win.add_df(input_df)
     # win.add_df(clean_df)
     # win.add_df(lfp_df)

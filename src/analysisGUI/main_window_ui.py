@@ -9,7 +9,7 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from analysisGUI.mtableview import MTableView
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -153,24 +153,18 @@ class Ui_MainWindow(object):
         self.progressBar.setProperty("value", 0)
         self.progressBar.setObjectName("progressBar")
         self.horizontalLayout_4.addWidget(self.progressBar)
-        self.label = QtWidgets.QLabel(self.status_bar)
-        font = QtGui.QFont()
-        font.setPointSize(6)
-        self.label.setFont(font)
-        self.label.setObjectName("label")
-        self.horizontalLayout_4.addWidget(self.label)
-        self.pushButton = QtWidgets.QPushButton(self.status_bar)
+        self.aborttask = QtWidgets.QPushButton(self.status_bar)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.pushButton.sizePolicy().hasHeightForWidth())
-        self.pushButton.setSizePolicy(sizePolicy)
-        self.pushButton.setMinimumSize(QtCore.QSize(20, 0))
+        sizePolicy.setHeightForWidth(self.aborttask.sizePolicy().hasHeightForWidth())
+        self.aborttask.setSizePolicy(sizePolicy)
+        self.aborttask.setMinimumSize(QtCore.QSize(20, 0))
         font = QtGui.QFont()
         font.setPointSize(6)
-        self.pushButton.setFont(font)
-        self.pushButton.setObjectName("pushButton")
-        self.horizontalLayout_4.addWidget(self.pushButton)
+        self.aborttask.setFont(font)
+        self.aborttask.setObjectName("aborttask")
+        self.horizontalLayout_4.addWidget(self.aborttask)
         self.verticalLayout_2.addWidget(self.status_bar)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
@@ -182,7 +176,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.menu_tabs.setCurrentIndex(0)
+        self.menu_tabs.setCurrentIndex(1)
         self.result_tabs.setCurrentIndex(-1)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
@@ -202,5 +196,5 @@ class Ui_MainWindow(object):
         self.exportall.setText(_translate("MainWindow", "Export All Figures"))
         self.menu_tabs.setTabText(self.menu_tabs.indexOf(self.result_tab), _translate("MainWindow", "Results"))
         self.current_exec.setText(_translate("MainWindow", "All Done"))
-        self.label.setText(_translate("MainWindow", "previous_tasks"))
-        self.pushButton.setText(_translate("MainWindow", "|"))
+        self.aborttask.setText(_translate("MainWindow", "X"))
+from analysisGUI.mtableview import MTableView

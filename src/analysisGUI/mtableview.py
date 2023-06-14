@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QTableView, QMainWind
 from PyQt5.QtGui import QIcon, QImage, QStandardItem, QStandardItemModel, QMovie, QCursor
 from PyQt5.QtCore import pyqtSlot, QItemSelectionModel, QModelIndex
 import toolbox
-
+from typing import List
 
 
 class MTableView(QTableView):
@@ -30,8 +30,14 @@ class MTableView(QTableView):
         selection = [(i.row(), i.column()) for i in self.selectionModel().selection().indexes()]
         self.menu = QMenu(self)
         computeAction = QAction('Compute', self)
+        invalidateAction = QAction('Invalidate', self)
+        expandAction = QAction('ResizeColumnToContents', self)
         computeAction.triggered.connect(lambda: self.computeSlot(self.selectionModel().selection().indexes(), self.model()._dataframe))
+        invalidateAction.triggered.connect(lambda: self.invalidateSlot(self.selectionModel().selection().indexes(), self.model()._dataframe))
+        expandAction.triggered.connect(lambda: self.expandSlot({index.column() for index in self.selectionModel().selection().indexes()}))
         self.menu.addAction(computeAction)
+        self.menu.addAction(invalidateAction)
+        self.menu.addAction(expandAction)
         # add other required actions
         self.menu.popup(QCursor.pos())
       
@@ -45,6 +51,20 @@ class MTableView(QTableView):
               item.get_result()
       task = Task(win, "compute", lambda task_info: True, lambda task_info: self.model().dataChanged.emit(selec[0], selec[-1]), run, {})
       win.add_task(task)
+
+    def invalidateSlot(self, selec, df):
+      from analysisGUI.gui import Task
+      win = self.window()
+      items: List[toolbox.RessourceHandle] = [df.iloc[i.row(), i.column()] for i in selec if isinstance(df.iloc[i.row(), i.column()], RessourceHandle)]
+      def run(task_info):
+          for item in task_info["progress"](items):
+              item.invalidate_all()
+      task = Task(win, "invalidate", lambda task_info: True, lambda task_info: self.model().dataChanged.emit(selec[0], selec[-1]), run, {})
+      win.add_task(task)
+
+    def expandSlot(self, indices):
+      for i in indices:
+        self.resizeColumnToContents(i)
     #   self.parent.add_task()
     #   for ind in selec:
     #       item = df.iloc[ind.row(), ind.column()]

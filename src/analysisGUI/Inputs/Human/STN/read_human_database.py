@@ -25,8 +25,6 @@ class ReadHumanSTNDataBase(GUIDataFrame):
                 if df[col].isnull().all():
                     df.drop(columns=[col], inplace=True)
             df.columns = [str(s) for s in df.iloc[0, :].to_list()]
-            # print(df)
-            # df.columns=["Test"+str(i) for i in range(len(df.columns))]
             df = df.iloc[1:, :]
             df.columns = ["StructDateH"] + list(df.columns[1:])
             df.insert(0, "Entry", entry)

@@ -1,0 +1,21 @@
+
+from analysisGUI.gui import GUIDataFrame
+import pathlib 
+import pandas as pd
+import toolbox
+
+class FilterHumanSTNData(GUIDataFrame):
+    def __init__(self, merged_db, computation_m):
+        super().__init__("inputs.human.stn.signals.filtered", 
+            {"inputs.human.stn.filter.isolation":"0.6"}, computation_m, {"db": merged_db}, alternative_names=["inputs.human.stn", "inputs.human.stn.signals"])
+        self.computation_m = computation_m
+        
+    
+    def compute_df(self, db):
+        df =  db[db["Source"]=="Files + DB"].copy()
+        df = df[(df["signal_type"]=="mua") | (df["Isolation"].astype(float)>=float(self.metadata["inputs.human.stn.filter.isolation"]))].reset_index(drop=True)
+        return df.drop(columns=["Source", "file", "file_path", "Entry", "DateH", "StructDateH"])
+
+
+        
+    
