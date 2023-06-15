@@ -438,6 +438,7 @@ class Window(QMainWindow, Ui_MainWindow):
          if {k:v for k, v in setup_params.items() if k in self.dfs[i].metadata} != self.dfs[i].metadata:
             self.dfs[i].metadata = {k:v for k, v in setup_params.items() if k in self.dfs[i].metadata}
             self.dfs[i].invalidated=True
+            self.dfs[i]._dataframe.invalidate_all()
       if update_view:
          self.reload_setup_params_view()
 

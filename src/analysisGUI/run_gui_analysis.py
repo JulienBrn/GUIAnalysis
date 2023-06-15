@@ -1,13 +1,13 @@
-from analysisGUI import correlationDataDF
-from analysisGUI import coherenceDataDF
-from analysisGUI import pwelchDataDF
-from analysisGUI import SpikeContinuousDataDF
-from analysisGUI import BUADataDF
-from analysisGUI import LFPDataDF
-from analysisGUI import CleanDataDF
-from analysisGUI import InputDataDF
+# from analysisGUI import correlationDataDF
+# from analysisGUI import coherenceDataDF
+# from analysisGUI import pwelchDataDF
+# from analysisGUI import SpikeContinuousDataDF
+# from analysisGUI import BUADataDF
+# from analysisGUI import LFPDataDF
+# from analysisGUI import CleanDataDF
+# from analysisGUI import InputDataDF
 from analysisGUI import Window
-from analysisGUI import group_coherenceDataDF
+# from analysisGUI import group_coherenceDataDF
 from analysisGUI.Inputs.Monkey.read_monkey_files import ReadMonkeyFiles
 from analysisGUI.Inputs.Monkey.parse_monkey_files import ParseMonkeyFiles
 from analysisGUI.Inputs.Monkey.read_monkey_database import ReadMonkeyDataBase
@@ -42,8 +42,8 @@ from analysisGUI.Inputs.Rat.extract_signals import ExtractRatSignals
 from analysisGUI.Inputs.Rat.declare_signals import DeclareRatSignals
 from analysisGUI.Inputs.all import Inputs
 from analysisGUI.Signals.raw_cleaned import Clean
-
-
+from analysisGUI.Signals.lfp import LFP
+from analysisGUI.Signals.bua import BUA
 
 
 from toolbox import Manager, json_loader, np_loader, df_loader, float_loader, matlab_loader, matlab73_loader, read_folder_as_database, mk_block, replace_artefacts_with_nans2
@@ -130,6 +130,8 @@ def run_gui():
 
     inputs = Inputs(human_signals, rat_declared_signals, monkey_signals, computation_m)
     cleaned = Clean(inputs, computation_m)
+    lfp = LFP(cleaned, computation_m)
+    bua = BUA(cleaned, computation_m)
     # input_df = InputDataDF(dataframe_manager, computation_m, step_signals)
     # clean_df = CleanDataDF(computation_m, step_signals, input_df)
     # lfp_df = LFPDataDF(computation_m, step_signals, clean_df)
@@ -182,6 +184,8 @@ def run_gui():
     win.add_df(rat_declared_signals)
 
     win.add_df(cleaned)
+    win.add_df(lfp)
+    win.add_df(bua)
     
     # win.add_df(input_df)
     # win.add_df(clean_df)

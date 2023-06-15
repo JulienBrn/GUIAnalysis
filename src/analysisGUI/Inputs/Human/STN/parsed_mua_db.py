@@ -26,7 +26,7 @@ class ParsedHumanSTNMUADataBase(GUIDataFrame):
             return raw
         def declare_raw_fs(dp):
             mat =  scipy.io.loadmat(base_folder+"/"+dp.file_path, variable_names=dp.keys[0])
-            fs = np.squeeze(mat[dp.keys[0]])
+            fs = np.squeeze(mat[dp.keys[0]])*1000
             # logger.info("Got ressource {}. Value is {}".format(dp, fs))
             return fs
         
