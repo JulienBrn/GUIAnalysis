@@ -317,9 +317,15 @@ class Window(QMainWindow, Ui_MainWindow):
       
 
    def initialize_events(self):
-      self.invalidate.clicked.connect(lambda: self.add_task(self.mk_invalidate_task([i.row() for i in self.tableView.selectionModel().selectedRows()])))
-      
-      self.compute.clicked.connect(lambda:self.add_task(self.mk_compute_task([i.row() for i in self.tableView.selectionModel().selectedRows()])))
+      # self.invalidate.clicked.connect(lambda: self.add_task(self.mk_invalidate_task([i.row() for i in self.tableView.selectionModel().selectedRows()])))
+      import itertools
+      self.compute.clicked.connect(
+         lambda:self.add_task(self.mk_compute_task(
+            itertools.product(
+               range(len(self.dfs[self.current_df].get_df().index)), 
+               range(len(self.dfs[self.current_df].get_df().columns)
+            )), [(toolbox.RessourceHandle.is_saved_on_disk, False), (toolbox.RessourceHandle.is_saved_on_compute, True)]
+         )))
       # self.view.clicked.connect(lambda: view([i.row() for i in self.tableView.selectionModel().selectedRows()]))
       # self.exportall.clicked.connect(lambda: self.export_all_figures())
       self.export_btn.clicked.connect(self.save_df_file_dialog)
@@ -368,7 +374,8 @@ class Window(QMainWindow, Ui_MainWindow):
          self.update_from_setup_params_view()
 
          def computefunc(df, current_df, task_info):
-               df.tqdm = task_info["progress"]
+               for d in self.dfs:
+                  d.tqdm = task_info["progress"]
                # .pandas("Getting df "+df.name)
                df.get_df()
 
@@ -448,15 +455,47 @@ class Window(QMainWindow, Ui_MainWindow):
       
       return Task("invalidate", len(indices), invalidate, [], {"df": self.tableView.model()._dataframe, "indices":indices})
    
-   def mk_compute_task(self, indices):
-      def compute(df, indices, __curr_task: Task):
-         for i in tqdm(indices):
-            __curr_task.curr +=1
-            for col in df.result_columns:
-               val = df[col].iat[i]
-               if isinstance(val, RessourceHandle):
-                  val.get_result()
-      return Task("compute", len(indices), compute, [], {"df": self.tableView.model()._dataframe, "indices":indices})
+   def mk_compute_task(self, indices, filters=[]):
+      df = self.tableView.model()._dataframe
+      def mfilter(item: toolbox.RessourceHandle):
+         if isinstance(item, toolbox.RessourceHandle):
+            if item.is_in_memory():
+               return False
+            for f,val in filters:
+               if not f(item) is val:
+                  return False
+            return True
+         return False
+      
+      items: List[toolbox.RessourceHandle] = [df.iloc[i, j] for i, j in indices if mfilter(df.iloc[i, j])]
+      min_i = min((i for i,j in indices if mfilter(df.iloc[i, j])), default=0)
+      max_i = max((i for i,j in indices if mfilter(df.iloc[i, j])), default=0)
+      min_j = min((j for i,j in indices if mfilter(df.iloc[i, j])), default=0)
+      max_j = max((j for i,j in indices if mfilter(df.iloc[i, j])), default=0)
+      def update():
+         # self.tableView.model().dataChanged.emit(
+         # self.tableView.model().createIndex(min_i, min_j), 
+         # self.tableView.model().createIndex(max_i, max_j))
+         pass
+      def run(task_info):
+          last_time=time.time()
+          mtqdm = task_info["progress"]
+          for item in mtqdm(items):
+              item.get_result()
+              curr_time = time.time()
+              if curr_time - last_time > 5:
+                 last_time=curr_time
+                 update()
+      task = Task(self, "compute", lambda task_info: True, lambda task_info: update(), run, {})
+      return task
+      # def compute(df, indices, __curr_task: Task):
+      #    for i in tqdm(indices):
+      #       __curr_task.curr +=1
+      #       for col in df.result_columns:
+      #          val = df[col].iat[i]
+      #          if isinstance(val, RessourceHandle):
+      #             val.get_result()
+      # return Task("compute", len(indices), compute, [], {"df": self.tableView.model()._dataframe, "indices":indices})
          
    def on_computation_tab_clicked(self):
       if self.current_df is None:

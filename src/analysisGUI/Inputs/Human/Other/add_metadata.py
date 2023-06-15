@@ -19,6 +19,7 @@ class AddHumanOtherMetadata(GUIDataFrame):
         df["Subject"] = np.nan
         df["file_path"] = df.pop("Files")
         df["Start"] = 0
+        df["Session"] = "HO#" + df.groupby(by=["Date", "Hemisphere", "Electrode", "Depth"]).ngroup().astype(str)
         df["raw_fs"] = df["Date"].apply(lambda d: 48000 if d < "2015_01_01" else 44000)
         def get_duration(fp, raw_fs):
             mat = scipy.io.loadmat(self.metadata["inputs.human.other.files.base_folder"] + "/" + fp)
@@ -26,7 +27,7 @@ class AddHumanOtherMetadata(GUIDataFrame):
             return dur
         df["End"] = df.apply(lambda row: self.computation_m.declare_computable_ressource(get_duration, {"fp": row["file_path"], "raw_fs": row["raw_fs"]}, toolbox.float_loader, "human_other_input_duration", True), axis=1)
     
-        return df
+        return df.drop(columns=["raw_fs"])
 
 
 

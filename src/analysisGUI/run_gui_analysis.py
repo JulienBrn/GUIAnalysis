@@ -35,6 +35,14 @@ from analysisGUI.Inputs.Human.Other.declare_mua import DeclareHumanOtherMUA
 from analysisGUI.Inputs.Human.Other.declare_spikes import DeclareHumanOtherSpikes
 from analysisGUI.Inputs.Human.Other.merge_signals import MergeHumanOtherSignals
 from analysisGUI.Inputs.Human.merged import MergeHumanSignals
+from analysisGUI.Inputs.Rat.read_files import ReadRatFiles
+from analysisGUI.Inputs.Rat.parse_files import ParseRatFiles
+from analysisGUI.Inputs.Rat.add_metadata import AddRatMetadata
+from analysisGUI.Inputs.Rat.extract_signals import ExtractRatSignals
+from analysisGUI.Inputs.Rat.declare_signals import DeclareRatSignals
+from analysisGUI.Inputs.all import Inputs
+from analysisGUI.Signals.raw_cleaned import Clean
+
 
 
 
@@ -113,6 +121,15 @@ def run_gui():
     human_other_spikes = DeclareHumanOtherSpikes(add_human_other_md, computation_m)
     human_other_signals = MergeHumanOtherSignals(human_other_mua, human_other_spikes, computation_m)
     human_signals = MergeHumanSignals(filter_human_stn_data, human_other_signals, computation_m)
+
+    read_rat_files = ReadRatFiles(computation_m)
+    parse_rat_files = ParseRatFiles(read_rat_files, computation_m)
+    add_rat_md = AddRatMetadata(parse_rat_files, computation_m)
+    rat_signals = ExtractRatSignals(add_rat_md, computation_m)
+    rat_declared_signals = DeclareRatSignals(rat_signals, computation_m)
+
+    inputs = Inputs(human_signals, rat_declared_signals, monkey_signals, computation_m)
+    cleaned = Clean(inputs, computation_m)
     # input_df = InputDataDF(dataframe_manager, computation_m, step_signals)
     # clean_df = CleanDataDF(computation_m, step_signals, input_df)
     # lfp_df = LFPDataDF(computation_m, step_signals, clean_df)
@@ -125,7 +142,8 @@ def run_gui():
     # group_coherence_df = group_coherenceDataDF(computation_m,coherence_df)
     # correlation_df = correlationDataDF(
     #     computation_m, step_signals, spike_continuous_df)
-    
+    win.add_df(inputs)
+
     win.add_df(read_monkey_files)
     win.add_df(parse_monkey_files)
     win.add_df(read_monkey_db)
@@ -156,6 +174,15 @@ def run_gui():
     win.add_df(human_other_signals)
 
     win.add_df(human_signals)
+
+    win.add_df(read_rat_files)
+    win.add_df(parse_rat_files)
+    win.add_df(add_rat_md)
+    win.add_df(rat_signals)
+    win.add_df(rat_declared_signals)
+
+    win.add_df(cleaned)
+    
     # win.add_df(input_df)
     # win.add_df(clean_df)
     # win.add_df(lfp_df)

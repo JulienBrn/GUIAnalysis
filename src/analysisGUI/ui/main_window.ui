@@ -166,23 +166,16 @@
                 </spacer>
                </item>
                <item>
-                <widget class="QPushButton" name="invalidate">
-                 <property name="text">
-                  <string>Invalidate Selected</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
                 <widget class="QPushButton" name="compute">
                  <property name="text">
-                  <string>Compute Selected</string>
+                  <string>Compute All</string>
                  </property>
                 </widget>
                </item>
                <item>
                 <widget class="QPushButton" name="view">
                  <property name="text">
-                  <string>View Selected</string>
+                  <string>View All</string>
                  </property>
                 </widget>
                </item>

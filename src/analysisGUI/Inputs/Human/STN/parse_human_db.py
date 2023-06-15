@@ -24,6 +24,7 @@ class ParseHumanSTNDataBase(GUIDataFrame):
         df["Electrode"] = df.pop("channel").astype(int)
         df["Depth"] = df["file"].str.extract('(\d+)').astype(str)
         df["Subject"] = np.nan
+        df["Session"] = "HS#" + df.groupby(by=["Date", "Hemisphere", "Electrode", "Depth"]).ngroup().astype(str)
         df["file_path"] = df["Structure"] + "/" + df['StructDateH'].str.slice(5) + "/"+ df["file"].str.replace("map", "mat")
         df["Start"] = 0
         def get_duration(fp):

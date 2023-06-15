@@ -22,7 +22,7 @@ class ParsedHumanSTNMUADataBase(GUIDataFrame):
         def declare_raw_sig(dp):
             mat =  scipy.io.loadmat(base_folder+"/"+dp.file_path, variable_names=dp.keys[0])
             raw = np.squeeze(mat[dp.keys[0]])
-            logger.info("Got ressource {}. Shape is {}".format(dp, raw.shape))
+            # logger.info("Got ressource {}. Shape is {}".format(dp, raw.shape))
             return raw
         def declare_raw_fs(dp):
             mat =  scipy.io.loadmat(base_folder+"/"+dp.file_path, variable_names=dp.keys[0])

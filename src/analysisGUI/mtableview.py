@@ -45,11 +45,12 @@ class MTableView(QTableView):
     def computeSlot(self, selec, df):
       from analysisGUI.gui import Task
       win = self.window()
-      items = [df.iloc[i.row(), i.column()] for i in selec if isinstance(df.iloc[i.row(), i.column()], RessourceHandle)]
-      def run(task_info):
-          for item in task_info["progress"](items):
-              item.get_result()
-      task = Task(win, "compute", lambda task_info: True, lambda task_info: self.model().dataChanged.emit(selec[0], selec[-1]), run, {})
+      task = win.mk_compute_task([(i.row(), i.column()) for i in selec])
+    #   items = [df.iloc[i.row(), i.column()] for i in selec if isinstance(df.iloc[i.row(), i.column()], RessourceHandle)]
+    #   def run(task_info):
+    #       for item in task_info["progress"](items):
+    #           item.get_result()
+    #   task = Task(win, "compute", lambda task_info: True, lambda task_info: self.model().dataChanged.emit(selec[0], selec[-1]), run, {})
       win.add_task(task)
 
     def invalidateSlot(self, selec, df):
