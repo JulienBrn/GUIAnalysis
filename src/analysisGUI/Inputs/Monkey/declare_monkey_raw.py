@@ -20,6 +20,8 @@ class DeclareMonkeyRaw(GUIDataFrame):
         raw_df.insert(0, "nb_subsignals", raw_df["signal_path"].apply(len))
         raw_df.insert(0, "Start", raw_df.pop("Start").apply(min))
         raw_df.insert(0, "End", raw_df.pop("End").apply(max))
+        raw_df.pop("Duration")
+        raw_df.insert(0, "Duration", raw_df["End"] - raw_df["Start"])
 
         self.tqdm.pandas(desc="Declaring signal matrix")
         raw_df.insert(0, "signal_matrix",raw_df.progress_apply(

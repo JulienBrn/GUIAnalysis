@@ -6,7 +6,7 @@ import toolbox
 
 class ParseMonkeyDataBase(GUIDataFrame):
     def __init__(self, rd_monkey_db, computation_m):
-        super().__init__("inputs.monkey.db.parsed", {}, computation_m, {"db":rd_monkey_db}, save=True, alternative_names=["inputs.monkey.db"])
+        super().__init__("inputs.monkey.db.parsed", {}, computation_m, {"db":rd_monkey_db}, save=False, alternative_names=["inputs.monkey.db"])
         self.computation_m = computation_m
         self.rd_monkey_db = rd_monkey_db
     
@@ -17,6 +17,7 @@ class ParseMonkeyDataBase(GUIDataFrame):
         df["Structure"] = df["Structure"].str.slice(0, 3)
         df["Start"] = df["Start"].astype(float)
         df["End"] = df["End"].astype(float)
+        df["Duration"] = df["End"] - df["Start"]
         return df
 
 

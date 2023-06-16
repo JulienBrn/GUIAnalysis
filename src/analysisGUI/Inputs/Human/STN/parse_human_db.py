@@ -32,7 +32,7 @@ class ParseHumanSTNDataBase(GUIDataFrame):
             dur= np.squeeze(mat['CElectrode1_TimeEnd']) - np.squeeze(mat['CElectrode1_TimeBegin'])
             return dur
         self.tqdm.pandas(desc="Declaring durations")
-        df["End"] = df["file_path"].apply(lambda fp: self.computation_m.declare_computable_ressource(get_duration, {"fp":fp}, toolbox.float_loader, "human_input_durations", True))
+        df["Duration"] = df["file_path"].apply(lambda fp: self.computation_m.declare_computable_ressource(get_duration, {"fp":fp}, toolbox.float_loader, "human_input_durations", True))
         return df
 
 

@@ -10,7 +10,7 @@ class ReadHumanSTNDataBase(GUIDataFrame):
         super().__init__("inputs.human.stn.db.read", 
             {
                 "inputs.human.stn.db.separator":",",
-            }, computation_m, {"list_db": list_db}, save=True)
+            }, computation_m, {"list_db": list_db}, save=False)
         self.computation_m = computation_m
         
     
@@ -30,6 +30,7 @@ class ReadHumanSTNDataBase(GUIDataFrame):
             df.insert(0, "Entry", entry)
             dfs.append(df)
         df = pd.concat(dfs)
+        df["file length (s)"] = df["file length (s)"].astype(float)
         return df
 
 

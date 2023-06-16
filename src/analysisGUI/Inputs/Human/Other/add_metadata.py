@@ -25,7 +25,7 @@ class AddHumanOtherMetadata(GUIDataFrame):
             mat = scipy.io.loadmat(self.metadata["inputs.human.other.files.base_folder"] + "/" + fp)
             dur = np.squeeze(mat["MUA"]).size / raw_fs
             return dur
-        df["End"] = df.apply(lambda row: self.computation_m.declare_computable_ressource(get_duration, {"fp": row["file_path"], "raw_fs": row["raw_fs"]}, toolbox.float_loader, "human_other_input_duration", True), axis=1)
+        df["Duration"] = df.apply(lambda row: self.computation_m.declare_computable_ressource(get_duration, {"fp": row["file_path"], "raw_fs": row["raw_fs"]}, toolbox.float_loader, "human_other_input_duration", True), axis=1)
     
         return df.drop(columns=["raw_fs"])
 

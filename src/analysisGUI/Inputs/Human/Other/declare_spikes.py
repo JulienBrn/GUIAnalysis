@@ -22,5 +22,8 @@ class DeclareHumanOtherSpikes(GUIDataFrame):
             sig = np.reshape(mat["SUA"], -1)
             return sig
         neuron_df["signal"] = neuron_df["file_path"].apply(lambda fp: self.computation_m.declare_computable_ressource(get_neuron_sig, {"fp": fp}, toolbox.np_loader, "human_other_spike_input", True))
+        
+        neuron_df["max_spike_time"] = neuron_df.apply(lambda row: self.computation_m.declare_computable_ressource(lambda sig, fs: float(sig[-1])/fs, {"sig": row["signal"], "fs": row["signal_fs"]}, toolbox.float_loader, "human_other_spike_input_max", False), axis=1)
+        
         return neuron_df.drop(columns=["Source"])
 

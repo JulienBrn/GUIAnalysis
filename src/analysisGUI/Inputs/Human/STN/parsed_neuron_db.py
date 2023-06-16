@@ -27,8 +27,18 @@ class ParsedHumanSTNNeuronDataBase(GUIDataFrame):
        
         neuron_df["spike_file_path"] = neuron_df["Structure"] + "/" + neuron_df['StructDateH'].str.slice(5) + "/sorting results_"+ neuron_df['StructDateH'].str.slice(5) + "-" + neuron_df["file"].str[0:-4] + "-channel" + neuron_df["Electrode"].astype(int).astype(str) + "-1.mat"
         neuron_df["signal_path"] = neuron_df.pop("spike_file_path").apply(lambda s:toolbox.DataPath(s, ["ComplexKey"]))
-        neuron_df["signal_fs"] = 1
+        # neuron_df["signal_fs"] = 1
         neuron_df["signal_type"] = "spike_times"
+
+
+        neuron_df["signal_fs_path"] = neuron_df.apply(lambda row: toolbox.DataPath(row["file_path"], ["CElectrode{}_KHz".format(row["Electrode"])]), axis=1)
+        def declare_fs(dp):
+            mat =  scipy.io.loadmat(base_folder+"/"+dp.file_path, variable_names=dp.keys[0])
+            fs = np.squeeze(mat[dp.keys[0]])*1000
+            # logger.info("Got ressource {}. Value is {}".format(dp, fs))
+            return fs
+        neuron_df["signal_fs"] = neuron_df.apply(lambda row: self.computation_m.declare_computable_ressource(declare_fs, {"dp": row["signal_fs_path"]}, toolbox.float_loader, "human_input_fs", True), axis=1)
+    
 
         base_folder = self.metadata["inputs.human.stn.files.base_folder"]
         def declare_spike_sig(signal_path, neuron):
@@ -40,9 +50,12 @@ class ParsedHumanSTNNeuronDataBase(GUIDataFrame):
             return spike
     
         neuron_df["signal"] = neuron_df.apply(lambda row: self.computation_m.declare_computable_ressource(declare_spike_sig, {"signal_path": row["signal_path"], "neuron": row["neuron_num"]}, toolbox.np_loader, "human_input_spike", True), axis=1)
-   
+        neuron_df["max_spike_time"] = neuron_df.apply(lambda row: self.computation_m.declare_computable_ressource(lambda sig, fs: float(sig[-1])/fs, {"sig": row["signal"], "fs": row["signal_fs"]}, toolbox.float_loader, "human_other_spike_input_max", False), axis=1)
+        
 
-        return neuron_df.drop(columns=["file_path", "file"])
+
+
+        return neuron_df.drop(columns=["file_path", "file", "signal_fs_path"])
 
        
 

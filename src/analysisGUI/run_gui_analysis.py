@@ -44,6 +44,9 @@ from analysisGUI.Inputs.all import Inputs
 from analysisGUI.Signals.raw_cleaned import Clean
 from analysisGUI.Signals.lfp import LFP
 from analysisGUI.Signals.bua import BUA
+from analysisGUI.Signals.spike_bins import SpikeBins
+from analysisGUI.Signals.all_resampled import AllResampled
+
 
 
 from toolbox import Manager, json_loader, np_loader, df_loader, float_loader, matlab_loader, matlab73_loader, read_folder_as_database, mk_block, replace_artefacts_with_nans2
@@ -132,6 +135,8 @@ def run_gui():
     cleaned = Clean(inputs, computation_m)
     lfp = LFP(cleaned, computation_m)
     bua = BUA(cleaned, computation_m)
+    spike_bins = SpikeBins(inputs, computation_m)
+    all_resampled = AllResampled(lfp, bua, spike_bins, computation_m)
     # input_df = InputDataDF(dataframe_manager, computation_m, step_signals)
     # clean_df = CleanDataDF(computation_m, step_signals, input_df)
     # lfp_df = LFPDataDF(computation_m, step_signals, clean_df)
@@ -186,7 +191,9 @@ def run_gui():
     win.add_df(cleaned)
     win.add_df(lfp)
     win.add_df(bua)
-    
+    win.add_df(spike_bins)
+    win.add_df(all_resampled)
+
     # win.add_df(input_df)
     # win.add_df(clean_df)
     # win.add_df(lfp_df)
