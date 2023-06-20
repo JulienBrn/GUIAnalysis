@@ -46,6 +46,10 @@ from analysisGUI.Signals.lfp import LFP
 from analysisGUI.Signals.bua import BUA
 from analysisGUI.Signals.spike_bins import SpikeBins
 from analysisGUI.Signals.all_resampled import AllResampled
+from analysisGUI.Analysis.pwelch import PWelch
+from analysisGUI.Analysis.group_pwelch import PWelchGroups
+from analysisGUI.Analysis.coherence import Coherence
+from analysisGUI.Analysis.group_coherence import CoherenceGroups
 
 
 
@@ -137,6 +141,11 @@ def run_gui():
     bua = BUA(cleaned, computation_m)
     spike_bins = SpikeBins(inputs, computation_m)
     all_resampled = AllResampled(lfp, bua, spike_bins, computation_m)
+
+    pwelch = PWelch(all_resampled, computation_m)
+    coherence = Coherence(all_resampled, computation_m)
+    pwelch_groups= PWelchGroups(pwelch, computation_m)
+    coherence_groups= CoherenceGroups(coherence, computation_m)
     # input_df = InputDataDF(dataframe_manager, computation_m, step_signals)
     # clean_df = CleanDataDF(computation_m, step_signals, input_df)
     # lfp_df = LFPDataDF(computation_m, step_signals, clean_df)
@@ -193,6 +202,11 @@ def run_gui():
     win.add_df(bua)
     win.add_df(spike_bins)
     win.add_df(all_resampled)
+
+    win.add_df(pwelch)
+    win.add_df(coherence)
+    win.add_df(pwelch_groups)
+    win.add_df(coherence_groups)
 
     # win.add_df(input_df)
     # win.add_df(clean_df)

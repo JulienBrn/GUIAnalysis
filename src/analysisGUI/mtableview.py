@@ -30,19 +30,39 @@ class MTableView(QTableView):
         selection = [(i.row(), i.column()) for i in self.selectionModel().selection().indexes()]
         self.menu = QMenu(self)
         computeAction = QAction('Compute', self)
+        loadAction = QAction('Load', self)
         invalidateAction = QAction('Invalidate', self)
         expandAction = QAction('ResizeColumnToContents', self)
+        plotAction = QAction('Plot', self)
+        viewRow = QAction('View row', self)
+        viewRow.triggered.connect(lambda: self.viewRowSlot(self.selectionModel().selection().indexes(), self.model()._dataframe))
         computeAction.triggered.connect(lambda: self.computeSlot(self.selectionModel().selection().indexes(), self.model()._dataframe))
+        loadAction.triggered.connect(lambda: self.loadSlot(self.selectionModel().selection().indexes(), self.model()._dataframe))
         invalidateAction.triggered.connect(lambda: self.invalidateSlot(self.selectionModel().selection().indexes(), self.model()._dataframe))
         expandAction.triggered.connect(lambda: self.expandSlot({index.column() for index in self.selectionModel().selection().indexes()}))
+        plotAction.triggered.connect(lambda: self.plotSlot(self.selectionModel().selection().indexes(), self.model()._dataframe))
         self.menu.addAction(computeAction)
         self.menu.addAction(invalidateAction)
         self.menu.addAction(expandAction)
+        self.menu.addAction(plotAction)
+        self.menu.addAction(viewRow)
+        self.menu.addAction(loadAction)
         # add other required actions
         self.menu.popup(QCursor.pos())
       
 
     def computeSlot(self, selec, df):
+      from analysisGUI.gui import Task
+      win = self.window()
+      task = win.mk_compute_task([(i.row(), i.column()) for i in selec], [(toolbox.RessourceHandle.is_saved_on_disk, False), (toolbox.RessourceHandle.is_saved_on_compute, True)])
+    #   items = [df.iloc[i.row(), i.column()] for i in selec if isinstance(df.iloc[i.row(), i.column()], RessourceHandle)]
+    #   def run(task_info):
+    #       for item in task_info["progress"](items):
+    #           item.get_result()
+    #   task = Task(win, "compute", lambda task_info: True, lambda task_info: self.model().dataChanged.emit(selec[0], selec[-1]), run, {})
+      win.add_task(task)
+
+    def loadSlot(self, selec, df):
       from analysisGUI.gui import Task
       win = self.window()
       task = win.mk_compute_task([(i.row(), i.column()) for i in selec])
@@ -52,6 +72,24 @@ class MTableView(QTableView):
     #           item.get_result()
     #   task = Task(win, "compute", lambda task_info: True, lambda task_info: self.model().dataChanged.emit(selec[0], selec[-1]), run, {})
       win.add_task(task)
+
+
+    def plotSlot(self, selec, df):
+      from analysisGUI.gui import Task
+      win = self.window()
+      task = win.mk_view_task([(i.row(), i.column()) for i in selec])
+    #   items = [df.iloc[i.row(), i.column()] for i in selec if isinstance(df.iloc[i.row(), i.column()], RessourceHandle)]
+    #   def run(task_info):
+    #       for item in task_info["progress"](items):
+    #           item.get_result()
+    #   task = Task(win, "compute", lambda task_info: True, lambda task_info: self.model().dataChanged.emit(selec[0], selec[-1]), run, {})
+      win.add_task(task)
+
+    def viewRowSlot(self, selec, df):
+      from analysisGUI.gui import Task
+      win = self.window()
+      i = selec[0].row()
+      win.view_row(df.iloc[i,:])
 
     def invalidateSlot(self, selec, df):
       from analysisGUI.gui import Task

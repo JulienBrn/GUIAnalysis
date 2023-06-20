@@ -39,6 +39,34 @@ import PyQt5.QtGui as QtGui
 import traceback
 import tqdm
 
+
+def mk_result_tab(nrows, ncols):
+   tab = QtWidgets.QWidget()
+   gridLayout = QtWidgets.QGridLayout(tab)
+   mpls = np.empty((nrows, ncols))
+   mpls=mpls.astype(object)
+   for row in range(nrows):
+      for col in range(ncols):
+         widget_3 = QtWidgets.QWidget(tab)
+         verticalLayout_7 = QtWidgets.QVBoxLayout(widget_3)
+         mpl = MplWidget(widget_3)
+         mpl.canvas.ax = mpl.canvas.fig.subplots(1,1)
+         verticalLayout_7.addWidget(mpl)
+         toolbar = NavigationToolbar(mpl.canvas, parent=widget_3)
+         gridLayout.setColumnStretch(col, 1)
+         gridLayout.setRowStretch(row, 1)
+         gridLayout.addWidget(widget_3, row, col)
+         mpls[row, col] = mpl
+   return tab, mpls
+
+   # self.label_3 = QtWidgets.QLabel(self.widget_3)
+   # self.label_3.setObjectName("label_3")
+   # self.verticalLayout_7.addWidget(self.label_3)
+   # self.label_4 = QtWidgets.QLabel(self.widget_3)
+   # self.label_4.setObjectName("label_4")
+   # self.verticalLayout_7.addWidget(self.label_4)
+   # self.gridLayout.addWidget(self.widget_3, 0, 2, 1, 2)
+
 # def mk_result_tab():
 #    result_tab = QtWidgets.QWidget()
 #    verticalLayout_4 = QtWidgets.QVBoxLayout(result_tab)
@@ -203,7 +231,7 @@ class Task(QtCore.QObject):
       self.window.progressBar.show()
       self.status = "Running"
       def finish():
-         self.onend(**self.kwargs, task_info={"errors": self.errors, "warnings": self.warnings, "progress": progress_class})
+         self.onend(**self.kwargs, task_info={"errors": self.errors, "warnings": self.warnings, "progress": progress_class, "result":self.process.res})
          self.status = "Finished"
          self.window.process_task()
       try:
@@ -236,7 +264,8 @@ class TaskThread(QThread):
 
    def run(self):
       try:
-         self.f(**self.kw, task_info={"errors": self.err, "warnings": self.warn, "progress": self.progress})
+         r = self.f(**self.kw, task_info={"errors": self.err, "warnings": self.warn, "progress": self.progress})
+         self.res = r
       except KeyboardInterrupt as e:
          raise e
       except BaseException as e:
@@ -291,28 +320,13 @@ class Window(QMainWindow, Ui_MainWindow):
          return
       else:
          t = self.tasks[self.task_num]
-         
-         # t.progress = self.progressBar #TOREMOVE
-         if t.status =="Running":
-            return
-         # self.process = ThreadTask(t)
-         # self.process.update.connect(lambda x: self.progressBar.setValue(t.curr))
-         # def onfinish():
-         #    logger.info("finished task {}".format(t.name))
-         #    t.running = False
-         #    t.finished = True
-         #    self.process_task()
-         # self.process.finished.connect(onfinish)
-         # self.current_exec.setText(t.name)
-         # t.running = True
-         # self.progressBar.show()
-         # self.progressBar.setValue(0)
-         # self.progressBar.setMaximum(t.max)
-         # logger.info("running task {}".format(t.name))
-         # self.process.start()
          nb_unprocessed = len(self.tasks) - self.task_num
          self.current_exec.setText("{} running, {} waiting".format(1, nb_unprocessed-1))
-         t.run()
+         # t.progress = self.progressBar #TOREMOVE
+         if not t.status =="Running":
+            nb_unprocessed = len(self.tasks) - self.task_num
+            self.current_exec.setText("{} running, {} waiting".format(1, nb_unprocessed-1))
+            t.run()
 
       
 
@@ -326,7 +340,7 @@ class Window(QMainWindow, Ui_MainWindow):
                range(len(self.dfs[self.current_df].get_df().columns)
             )), [(toolbox.RessourceHandle.is_saved_on_disk, False), (toolbox.RessourceHandle.is_saved_on_compute, True)]
          )))
-      # self.view.clicked.connect(lambda: view([i.row() for i in self.tableView.selectionModel().selectedRows()]))
+      self.view.clicked.connect(lambda: self.view_all())
       # self.exportall.clicked.connect(lambda: self.export_all_figures())
       self.export_btn.clicked.connect(self.save_df_file_dialog)
       # self.next.clicked.connect(get_next)
@@ -377,10 +391,10 @@ class Window(QMainWindow, Ui_MainWindow):
                for d in self.dfs:
                   d.tqdm = task_info["progress"]
                # .pandas("Getting df "+df.name)
-               df.get_df()
+               return df.get_df()
 
          def displayfunc(df, current_df, task_info):
-            ndf = df.get_df()
+            ndf = task_info["result"]
             if self.current_df == current_df:
                try:
                   self.tableView.setModel(DataFrameModel(ndf.reset_index(drop=True)))
@@ -468,19 +482,22 @@ class Window(QMainWindow, Ui_MainWindow):
             return True
          return False
       
-      items: List[toolbox.RessourceHandle] = [df.iloc[i, j] for i, j in indices if mfilter(df.iloc[i, j])]
-      min_i = min((i for i,j in indices if mfilter(df.iloc[i, j])), default=0)
-      max_i = max((i for i,j in indices if mfilter(df.iloc[i, j])), default=0)
-      min_j = min((j for i,j in indices if mfilter(df.iloc[i, j])), default=0)
-      max_j = max((j for i,j in indices if mfilter(df.iloc[i, j])), default=0)
+      
+      # min_i = min((i for i,j in indices if mfilter(df.iloc[i, j])), default=0)
+      # max_i = max((i for i,j in indices if mfilter(df.iloc[i, j])), default=0)
+      # min_j = min((j for i,j in indices if mfilter(df.iloc[i, j])), default=0)
+      # max_j = max((j for i,j in indices if mfilter(df.iloc[i, j])), default=0)
       def update():
          # self.tableView.model().dataChanged.emit(
          # self.tableView.model().createIndex(min_i, min_j), 
          # self.tableView.model().createIndex(max_i, max_j))
          pass
       def run(task_info):
+          nonlocal indices
+          indices = list(indices)
+          mtqdm:tqdm.tqdm = task_info["progress"]
+          items: List[toolbox.RessourceHandle] = [df.iloc[i, j] for i, j in mtqdm(indices, desc="Preparing compute") if mfilter(df.iloc[i, j])]
           last_time=time.time()
-          mtqdm = task_info["progress"]
           for item in mtqdm(items):
               item.get_result()
               curr_time = time.time()
@@ -505,6 +522,88 @@ class Window(QMainWindow, Ui_MainWindow):
 
 
 
+   def view_row(self, row):
+      df = self.dfs[self.current_df]
+      if hasattr(df, "view"):
+         self.result_tabs.clear()
+         self.menu_tabs.setCurrentWidget(self.result_tab)
+         result_tab,mpls = mk_result_tab(1,1)
+         self.result_tabs.addTab(result_tab, "res")
+         df.view(row, mpls[0,0].canvas.ax, mpls[0,0].canvas.fig)
+         mpls[0,0].canvas.draw()
+
+   def view_all(self):
+      df = self.dfs[self.current_df]
+      if hasattr(df, "view_all"):
+         self.result_tabs.clear()
+         self.menu_tabs.setCurrentWidget(self.result_tab)
+         result_tab,mpls = mk_result_tab(1,1)
+         self.result_tabs.addTab(result_tab, "res")
+         df.view_all(mpls[0,0].canvas.ax, mpls[0,0].canvas.fig)
+         mpls[0,0].canvas.draw()
+
+   def filter_view(self, indices):
+      return indices
+      # if hasattr(self.dfs[self.current_df], "time_series"):
+      #    d = self.dfs[self.current_df].time_series
+      #    l = [(i, j) for i,j in indices if self.tableView.model()._dataframe.columns[j] in d]
+      #    return 
+
+   def mk_view_task(self, indices):
+      df = self.tableView.model()._dataframe
+      indices = self.filter_view(indices)
+      # d = self.dfs[self.current_df].time_series
+      # nindices = [(i, k) for i,j in indices if self.tableView.model()._dataframe.columns[j] in d for k in [j, j+1]]
+      nindices = indices
+      t = self.mk_compute_task(nindices)
+      oldend = t.onend
+      def new_end(task_info):
+         oldend(task_info)
+         mtqdm:tqdm.tqdm = task_info["progress"]
+         arrays = [toolbox.get(df.iloc[i, j]) for i, j in mtqdm(indices, desc="Gathering arrays")]
+         arrays = [item for item in arrays if hasattr(item, "size") and item.size > 10]
+         
+         d = pd.DataFrame([[i %3] for i, _ in enumerate(arrays)], columns=["fig"])
+         d["y_data"] = arrays
+         # d["fig"] = df.index % 2
+         d["row"] = ((d.index/3)%3).astype(int)
+         d["column"] = ((d.index/9)%3).astype(int)
+         d["color"] = (d.index/27).astype(int)
+         self.result_tabs.clear()
+         
+
+         full_mpls = []
+         for i in range(d["fig"].max()+1):
+            result_tab,mpls = mk_result_tab(int(d.loc[d["fig"]==i, "row"].max()+1), int(d.loc[d["fig"]==i, "column"].max()+1))
+            self.result_tabs.addTab(result_tab, "res"+str(i))
+            full_mpls.append(mpls)
+
+         def draw(f, i, j, data):
+            try:
+               full_mpls[f][i, j].canvas.ax.plot(data)
+               full_mpls[f][i, j].canvas.draw()
+            except BaseException as e:
+               logger.error("{}".format(e))
+
+         d.apply(lambda row: draw(int(row["fig"]), row["row"], row["column"], row["y_data"]), axis=1)
+
+      def run(self):
+         if hasattr(self.df, "show_figs"):
+            for l in self.df.show_figs(self.rows, self.canvas):
+               logger.info("Emitting {}".format(l))
+               for i in l:
+                  self.ready.emit(i)
+         else:
+            canvas = self.canvas[0]
+            if len(self.rows.index) == 1 or not hasattr(self.df, "view_items"):
+               self.df.view_item(canvas, self.rows.iloc[0, :])
+            else:
+               self.df.view_items(canvas, self.rows)
+            self.ready.emit(0)
+
+
+      t.onend = new_end
+      return t
 
    #  def __init__(self, parent=None):
    #    super().__init__(parent)

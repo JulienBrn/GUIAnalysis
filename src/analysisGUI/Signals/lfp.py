@@ -19,7 +19,7 @@ class LFP(GUIDataFrame):
         self.computation_m = computation_m
     
     def compute_df(self, db: pd.DataFrame):
-        df = db.copy()
+        df = db[db["input_signal_type"]!="mua"].copy()
 
         for key,val in self.metadata.items():
             if "lfp." in key:

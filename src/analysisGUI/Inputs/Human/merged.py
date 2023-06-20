@@ -15,7 +15,7 @@ class MergeHumanSignals(GUIDataFrame):
     def compute_df(self, stn: pd.DataFrame, other: pd.DataFrame):
         stncp = stn.copy()
         stncp["Unit"] = stncp.pop("neuron_num")
-        df = pd.concat([stncp, other], join="outer", ignore_index=True)
+        df = pd.concat([stncp, other[~other["Structure"].str.contains("STN")]], join="outer", ignore_index=True)
         return df.drop(columns=["file length (s)", "number of units", "Rate", "Isolation"])
 
 
