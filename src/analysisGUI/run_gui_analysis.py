@@ -296,3 +296,6 @@ def run_gui():
 
     win.showMaximized()
     sys.exit(app.exec())
+
+if __name__ == "__main__":
+    run_gui()

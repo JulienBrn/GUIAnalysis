@@ -12,6 +12,7 @@ class AddRatMetadata(GUIDataFrame):
     def compute_df(self, db: pd.DataFrame):
         df =  db.loc[~(db["Structure"].isna() | db["Structure"].astype(str).str.contains("None")), :].copy().reset_index(drop=True)
         df["Species"] = "Rat"
+        df["Healthy"] = ~df["Condition"].str.contains("Park")
         df["Structure"] = df.apply(lambda row: row["Structure"] if row["Structure"]!="Striatum" else "STR", axis=1)
         df["signal_type"] = df["signal_type"].str.lower()
         df["Session"] = "RS"+ df["Session"]+"#" + df.groupby(by=["Date", "Subject", "Condition"]).ngroup().astype(str)

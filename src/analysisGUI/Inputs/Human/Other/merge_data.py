@@ -20,6 +20,7 @@ class MergeHumanOtherData(GUIDataFrame):
         df = pd.merge(filtered, db_df, how="outer")
         df["Source"] = df.apply(lambda row: "Files + DB" if row["is_from_files"] is True and row["is_from_db"] is True else "Files" if row["is_from_files"] is True else "DB", axis=1)
         df = df.sort_values("Source", ignore_index=True)
+        df["Discarded"] = df["Source"] != "Files + DB"
         return df.drop(columns=["is_from_files", "is_from_db"])
 
 

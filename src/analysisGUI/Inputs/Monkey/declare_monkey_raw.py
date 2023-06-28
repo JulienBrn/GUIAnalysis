@@ -13,7 +13,7 @@ class DeclareMonkeyRaw(GUIDataFrame):
         self.computation_m = computation_m
     
     def compute_df(self, db: pd.DataFrame):
-        raw_df = db.groupby(["Date","Species", "Condition", "Subject", "Electrode", "Depth", "Structure", "Session"]).aggregate(lambda x: tuple(x)).reset_index()
+        raw_df = db.groupby(["Date","Species", "Condition", "Healthy", "Subject", "Electrode", "Depth", "Structure", "Session"]).aggregate(lambda x: tuple(x)).reset_index()
         raw_df.insert(0, "signal_fs", 25000)
         raw_df.insert(0, "signal_type", "raw")
         raw_df.insert(len(raw_df.columns), "signal_path", raw_df.apply(lambda row: [(s, e, toolbox.DataPath(f, ["RAW"])) for s,e,f in zip(row["Start"], row["End"], row["Files"])], axis=1))

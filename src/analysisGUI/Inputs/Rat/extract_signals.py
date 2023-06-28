@@ -46,10 +46,13 @@ class ExtractRatSignals(GUIDataFrame):
             duration_spike=[]
             probes_spikes=[]
             electrodes=[]
-        return pd.DataFrame(
+        res= pd.DataFrame(
             [[k, None, "raw", fs, toolbox.DataPath(raw_file_path, [k, "values"]), dur, pr] for k,fs, dur, pr in zip(raw_keys, fs, duration_raw, probes_raw)] + 
             [[e, k, "spike_times", 1, toolbox.DataPath(spike_file_path, [k, "times"]), dur, pr] for e, k,dur,pr in zip(electrodes, spike_keys, duration_spike, probes_spikes)], 
-            columns=["Electrode", "Unit","signal_type", "signal_fs", "signal_path", "Duration", "Probes"])
+            columns=["Electrode", "Unit","signal_type", "signal_fs", "signal_path", "Duration", "Probes"], dtype=object)
+        # print(res.dtypes)
+        # input()
+        return res
 
 
         

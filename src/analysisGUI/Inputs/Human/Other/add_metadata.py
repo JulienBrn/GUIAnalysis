@@ -12,6 +12,7 @@ class AddHumanOtherMetadata(GUIDataFrame):
     def compute_df(self, db):
         df =  db[db["Source"]=="Files + DB"].copy()
         df["Species"] = "Human"
+        df["Healthy"] = df["Condition"] != "PD"
         df["Hemisphere"] = df['DateH'].str.extract(r'_([RL])(\d?)($|_)')[0]
         df["Date"] = df['DateH'].str.slice(0, 10)
         df["Electrode"] = df["ElectrodeDepth"].str.slice(0,2)

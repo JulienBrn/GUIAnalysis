@@ -21,6 +21,7 @@ class BUA(GUIDataFrame):
         self.computation_m = computation_m
     
     def compute_df(self, db: pd.DataFrame):
+        self.tqdm.pandas(desc="Computing bua signals")
         df = db.copy()
 
         for key,val in self.metadata.items():
@@ -29,7 +30,7 @@ class BUA(GUIDataFrame):
 
         
 
-        df.insert(0, "bua_signal", df.apply(lambda row: 
+        df.insert(0, "bua_signal", df.progress_apply(lambda row: 
             self.computation_m.declare_computable_ressource(extract_bua,
                 dict(sig=row["cleaned_signal"], fs = row["input_signal_fs"], 
                      filter_low_freq=float(row["bandpass.low_freq"]),
@@ -42,7 +43,7 @@ class BUA(GUIDataFrame):
         )
 
         df.insert(0, "signal_resampled_fs", float(self.metadata["signals.fs"]))
-        df.insert(0, "signal_resampled", df.apply(lambda row:
+        df.insert(0, "signal_resampled", df.progress_apply(lambda row:
             self.computation_m.declare_computable_ressource(
                 lambda sig, fs, out_fs: scipy.signal.resample(sig, math.ceil(sig.size* out_fs/float(fs))),
                 dict(sig=row["bua_signal"], fs = row["input_signal_fs"], 

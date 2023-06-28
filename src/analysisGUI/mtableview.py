@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QTableView, QMainWindow, QFileDialog, QMenu, QAction
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QTableView, QMainWindow, QFileDialog, QMenu, QAction, QMessageBox
 from PyQt5.QtGui import QIcon, QImage, QStandardItem, QStandardItemModel, QMovie, QCursor
 from PyQt5.QtCore import pyqtSlot, QItemSelectionModel, QModelIndex
 import toolbox
@@ -35,22 +35,28 @@ class MTableView(QTableView):
         expandAction = QAction('ResizeColumnToContents', self)
         plotAction = QAction('Plot', self)
         viewRow = QAction('View row', self)
+        showtype = QAction('show type', self)
         viewRow.triggered.connect(lambda: self.viewRowSlot(self.selectionModel().selection().indexes(), self.model()._dataframe))
         computeAction.triggered.connect(lambda: self.computeSlot(self.selectionModel().selection().indexes(), self.model()._dataframe))
         loadAction.triggered.connect(lambda: self.loadSlot(self.selectionModel().selection().indexes(), self.model()._dataframe))
         invalidateAction.triggered.connect(lambda: self.invalidateSlot(self.selectionModel().selection().indexes(), self.model()._dataframe))
         expandAction.triggered.connect(lambda: self.expandSlot({index.column() for index in self.selectionModel().selection().indexes()}))
         plotAction.triggered.connect(lambda: self.plotSlot(self.selectionModel().selection().indexes(), self.model()._dataframe))
+        showtype.triggered.connect(lambda: self.message_box(str(type(self.model()._dataframe.iloc[self.selectionModel().selection().indexes()[0].row(), self.selectionModel().selection().indexes()[0].column()]))))
         self.menu.addAction(computeAction)
         self.menu.addAction(invalidateAction)
         self.menu.addAction(expandAction)
         self.menu.addAction(plotAction)
         self.menu.addAction(viewRow)
         self.menu.addAction(loadAction)
+        self.menu.addAction(showtype)
         # add other required actions
         self.menu.popup(QCursor.pos())
       
-
+    def message_box(self, msg):
+       b = QMessageBox()
+       b.setText(msg)
+       b.exec()
     def computeSlot(self, selec, df):
       from analysisGUI.gui import Task
       win = self.window()

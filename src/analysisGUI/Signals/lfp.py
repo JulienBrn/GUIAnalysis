@@ -19,6 +19,7 @@ class LFP(GUIDataFrame):
         self.computation_m = computation_m
     
     def compute_df(self, db: pd.DataFrame):
+        self.tqdm.pandas(desc="Computing lfp signals")
         df = db[db["input_signal_type"]!="mua"].copy()
 
         for key,val in self.metadata.items():
@@ -26,7 +27,7 @@ class LFP(GUIDataFrame):
                 df[str(key[len("lfp."):])] = val
 
 
-        df.insert(0, "lfp_signal", df.apply(lambda row: 
+        df.insert(0, "lfp_signal", df.progress_apply(lambda row: 
             self.computation_m.declare_computable_ressource(extract_lfp,
                 dict(signal=row["cleaned_signal"], signal_fs = row["input_signal_fs"], 
                      lowpass_filter_freq=float(row["lowpass_filter_freq"]),
@@ -37,7 +38,7 @@ class LFP(GUIDataFrame):
         )
         
         df.insert(0, "signal_resampled_fs", float(self.metadata["signals.fs"]))
-        df.insert(0, "signal_resampled", df.apply(lambda row:
+        df.insert(0, "signal_resampled", df.progress_apply(lambda row:
             self.computation_m.declare_computable_ressource(
                 lambda sig, fs, out_fs: scipy.signal.resample(sig, math.ceil(sig.size* out_fs/float(fs))),
                 dict(sig=row["lfp_signal"], fs = row["input_signal_fs"], 
@@ -53,4 +54,4 @@ class LFP(GUIDataFrame):
 def extract_lfp(signal, signal_fs, lowpass_filter_freq, lowpass_order):
     filtera_lfp, filterb_lfp = scipy.signal.butter(lowpass_order, lowpass_filter_freq, fs=signal_fs, btype='low', analog=False)
     lfp = scipy.signal.lfilter(filtera_lfp, filterb_lfp, signal)
-    return lfp
+    return lfp  

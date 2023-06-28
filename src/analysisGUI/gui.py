@@ -40,7 +40,7 @@ import traceback
 import tqdm
 
 
-def mk_result_tab(nrows, ncols):
+def mk_result_tab(nrows, ncols, **kwargs):
    tab = QtWidgets.QWidget()
    gridLayout = QtWidgets.QGridLayout(tab)
    mpls = np.empty((nrows, ncols))
@@ -50,7 +50,7 @@ def mk_result_tab(nrows, ncols):
          widget_3 = QtWidgets.QWidget(tab)
          verticalLayout_7 = QtWidgets.QVBoxLayout(widget_3)
          mpl = MplWidget(widget_3)
-         mpl.canvas.ax = mpl.canvas.fig.subplots(1,1)
+         mpl.canvas.ax = mpl.canvas.fig.subplots(1,1, subplot_kw=kwargs)
          verticalLayout_7.addWidget(mpl)
          toolbar = NavigationToolbar(mpl.canvas, parent=widget_3)
          gridLayout.setColumnStretch(col, 1)
@@ -179,10 +179,23 @@ class GUIDataFrame:
          ret= self.compute_df(**kwargs)
          logger.info("Done Computing df {}".format(self.name))
          return ret
-      self._dataframe = df_ressource_manager.declare_computable_ressource(mcompute_df, {n:df._dataframe for n, df in other_dfs.items()}, df_loader, "Dataframe {}".format(self.name), save)
+      
+      def mcompute_output_df(ret):
+         if "Discarded" in ret.columns:
+            return ret[ret["Discarded"]!=True].drop(columns=["Discarded"]).reset_index(drop=True)
+         else:
+            return ret
+      
+      self._dataframe = df_ressource_manager.declare_computable_ressource(mcompute_df, {n:df._dataframe_out for n, df in other_dfs.items()}, df_loader, "Dataframe {}".format(self.name), save)
+      self._dataframe_out = df_ressource_manager.declare_computable_ressource(mcompute_output_df, {"ret":self._dataframe}, df_loader, "Dataframe out {}".format(self.name), False)
 
    def get_df(self) -> pd.DataFrame: 
+      return self._dataframe_out.get_result()
+      
+   def get_full_df(self) -> pd.DataFrame:
       return self._dataframe.get_result()
+   
+      # return self._dataframe.get_result()
    
    def compute_df(self):
       raise NotImplementedError("Abstract method compute_df of GUIDataFrame")
@@ -340,8 +353,8 @@ class Window(QMainWindow, Ui_MainWindow):
                range(len(self.dfs[self.current_df].get_df().columns)
             )), [(toolbox.RessourceHandle.is_saved_on_disk, False), (toolbox.RessourceHandle.is_saved_on_compute, True)]
          )))
-      self.view.clicked.connect(lambda: self.view_all())
-      # self.exportall.clicked.connect(lambda: self.export_all_figures())
+      self.view.clicked.connect(lambda: self.view_all_bis())
+      self.exportall.clicked.connect(lambda: self.export_all_figures())
       self.export_btn.clicked.connect(self.save_df_file_dialog)
       # self.next.clicked.connect(get_next)
       # self.previous.clicked.connect(get_prev)
@@ -391,7 +404,7 @@ class Window(QMainWindow, Ui_MainWindow):
                for d in self.dfs:
                   d.tqdm = task_info["progress"]
                # .pandas("Getting df "+df.name)
-               return df.get_df()
+               return df.get_full_df()
 
          def displayfunc(df, current_df, task_info):
             ndf = task_info["result"]
@@ -518,7 +531,9 @@ class Window(QMainWindow, Ui_MainWindow):
    def on_computation_tab_clicked(self):
       if self.current_df is None:
          if len(self.dfs) == 0:logger.warning("No dfs")
-         else: self.select_df(0)
+         # else: self.select_df(0)
+         else:
+            pass
 
 
 
@@ -527,10 +542,13 @@ class Window(QMainWindow, Ui_MainWindow):
       if hasattr(df, "view"):
          self.result_tabs.clear()
          self.menu_tabs.setCurrentWidget(self.result_tab)
-         result_tab,mpls = mk_result_tab(1,1)
-         self.result_tabs.addTab(result_tab, "res")
-         df.view(row, mpls[0,0].canvas.ax, mpls[0,0].canvas.fig)
-         mpls[0,0].canvas.draw()
+         if hasattr(df, "view_bis"):
+            df.view_bis(row, self.result_tabs)
+         else:
+            result_tab,mpls = mk_result_tab(1,1)
+            self.result_tabs.addTab(result_tab, "res")
+            df.view(row, mpls[0,0].canvas.ax, mpls[0,0].canvas.fig)
+            mpls[0,0].canvas.draw()
 
    def view_all(self):
       df = self.dfs[self.current_df]
@@ -542,6 +560,14 @@ class Window(QMainWindow, Ui_MainWindow):
          df.view_all(mpls[0,0].canvas.ax, mpls[0,0].canvas.fig)
          mpls[0,0].canvas.draw()
 
+   def view_all_bis(self):
+      df = self.dfs[self.current_df]
+      if hasattr(df, "view_all_bis"):
+         self.result_tabs.clear()
+         self.menu_tabs.setCurrentWidget(self.result_tab)
+         df.view_all_bis(self.result_tabs)
+         self.curr_view_all = self.dfs[self.current_df]
+
    def filter_view(self, indices):
       return indices
       # if hasattr(self.dfs[self.current_df], "time_series"):
@@ -550,6 +576,7 @@ class Window(QMainWindow, Ui_MainWindow):
       #    return 
 
    def mk_view_task(self, indices):
+      self.curr_view_all = False
       df = self.tableView.model()._dataframe
       indices = self.filter_view(indices)
       # d = self.dfs[self.current_df].time_series
@@ -604,6 +631,12 @@ class Window(QMainWindow, Ui_MainWindow):
 
       t.onend = new_end
       return t
+   
+   def export_all_figures(self):
+      if self.curr_view_all:
+         dir = QFileDialog.getExistingDirectory(self, "Select folder to export to")
+         if dir:
+            self.curr_view_all.export_figs(dir)
 
    #  def __init__(self, parent=None):
    #    super().__init__(parent)

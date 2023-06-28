@@ -19,6 +19,7 @@ class SpikeBins(GUIDataFrame):
         self.computation_m = computation_m
     
     def compute_df(self, db: pd.DataFrame):
+        self.tqdm.pandas(desc="Computing spike bins")
         df = db[db["input_signal_type"]=="spike_times"].copy()
         
         for key,val in self.metadata.items():
@@ -26,7 +27,7 @@ class SpikeBins(GUIDataFrame):
                 df[str(key[len("spike_bins."):])] = val
         df["spike_bins_fs"] = self.metadata["signals.fs"]
 
-        df.insert(0, "spike_bins_signal", df.apply(lambda row: 
+        df.insert(0, "spike_bins_signal", df.progress_apply(lambda row: 
             self.computation_m.declare_computable_ressource(make_continuous,
                 dict(signal=row["input_signal"], signal_fs = row["input_signal_fs"], 
                      out_fs=float(row["spike_bins_fs"]),

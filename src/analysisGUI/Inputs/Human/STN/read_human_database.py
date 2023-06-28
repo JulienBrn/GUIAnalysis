@@ -15,13 +15,14 @@ class ReadHumanSTNDataBase(GUIDataFrame):
         
     
     def compute_df(self, list_db):
+        self.tqdm.pandas(desc="Computing human stn dbread")
         dfs=[]
         for entry in list_db["Db_File_Path"]:
             entry: toolbox.DataPath
             mat = toolbox.matlab_loader.load(entry.file_path)
             df = pd.DataFrame(mat[entry.keys[0]])
             for col in df.columns:
-                df[col] = df.apply(lambda row: np.reshape(row[col], -1)[0] if row[col].size == 1 else None if row[col].size == 0 else row[col], axis=1)
+                df[col] = df.progress_apply(lambda row: np.reshape(row[col], -1)[0] if row[col].size == 1 else None if row[col].size == 0 else row[col], axis=1)
                 if df[col].isnull().all():
                     df.drop(columns=[col], inplace=True)
             df.columns = [str(s) for s in df.iloc[0, :].to_list()]

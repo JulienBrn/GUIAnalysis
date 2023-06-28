@@ -22,13 +22,14 @@ class Clean(GUIDataFrame):
         self.computation_m = computation_m
     
     def compute_df(self, db: pd.DataFrame):
+        self.tqdm.pandas(desc="Computing cleaned signals")
         df = db[db["input_signal_type"].isin(["raw", "mua"])].copy()
 
         for key,val in self.metadata.items():
             if "clean." in key:
                 df[str(key[len("clean."):])] = val
 
-        df.insert(0, "clean_rm_bounds", df.apply(lambda row: 
+        df.insert(0, "clean_rm_bounds", df.progress_apply(lambda row: 
             self.computation_m.declare_computable_ressource(
                 lambda **kwargs: pd.DataFrame(toolbox.compute_artefact_bounds(**kwargs),columns=["start", "end"]),
                 dict(sig=row["input_signal"], fs = row["input_signal_fs"], 
@@ -43,7 +44,7 @@ class Clean(GUIDataFrame):
         )
 
 
-        df.insert(1, "cleaned_signal", df.apply(lambda row: 
+        df.insert(1, "cleaned_signal", df.progress_apply(lambda row: 
             self.computation_m.declare_computable_ressource(generate_clean,
                 dict(signal=row["input_signal"], clean_bounds = row["clean_rm_bounds"], replace_type=self.metadata["clean.replace_type"])
                 , toolbox.np_loader, "clean_signal", False

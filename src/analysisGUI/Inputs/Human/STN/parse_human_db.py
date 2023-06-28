@@ -18,13 +18,14 @@ class ParseHumanSTNDataBase(GUIDataFrame):
         df= df.loc[meta, :].reset_index(drop=True)
         df["Species"] = "Human"
         df["Condition"] = "Park"
+        df["Healthy"] = df["Condition"] != "Park"
         df["Structure"] = "STN_"+ df['StructDateH'].str.slice(0,4)
         df["Date"] = df['StructDateH'].str.slice(5,15)
         df["Hemisphere"] = df['StructDateH'].str.slice(16)
         df["Electrode"] = df.pop("channel").astype(int)
         df["Depth"] = df["file"].str.extract('(\d+)').astype(str)
         df["Subject"] = np.nan
-        df["Session"] = "HS#" + df.groupby(by=["Date", "Hemisphere", "Electrode", "Depth"]).ngroup().astype(str)
+        df["Session"] = "HS#" + df.groupby(by=["Date", "Hemisphere", "Depth"]).ngroup().astype(str)
         df["file_path"] = df["Structure"] + "/" + df['StructDateH'].str.slice(5) + "/"+ df["file"].str.replace("map", "mat")
         df["Start"] = 0
         def get_duration(fp):
@@ -33,6 +34,9 @@ class ParseHumanSTNDataBase(GUIDataFrame):
             return dur
         self.tqdm.pandas(desc="Declaring durations")
         df["Duration"] = df["file_path"].apply(lambda fp: self.computation_m.declare_computable_ressource(get_duration, {"fp":fp}, toolbox.float_loader, "human_input_durations", True))
+        df.insert(0, "Discarded", df[(~df["Depth"].isna())].duplicated(subset=["Session", "Depth","Electrode"], keep=False))
+        df = df.sort_values(["Discarded", "Session", "Depth", "Electrode"], ignore_index=True, ascending=False)
+        # df = df[df["Maybe Duplicate"]!=True].reset_index(drop=True)
         return df
 
 
