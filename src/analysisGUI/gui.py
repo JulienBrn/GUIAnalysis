@@ -39,9 +39,21 @@ import PyQt5.QtGui as QtGui
 import traceback
 import tqdm
 
+def export_fig(folder, fig, title:str, canvas):
+    import re, unicodedata
+    canvas.draw()
+    value = unicodedata.normalize('NFKD', title).encode('ascii', 'ignore').decode('ascii')
+    value = re.sub(r'[^\w\s-]', '', value.lower())
+    ntitle = re.sub(r'[-\s]+', '-', value).strip('-_')
+    fig.savefig(str(pathlib.Path(folder) / (ntitle +".png")))
+
+class MyResultWidget(QtWidgets.QWidget):
+   def __init__(self, **kwargs):
+      super().__init__(**kwargs)
+      self.export = lambda x: print("No export defined for this tab")
 
 def mk_result_tab(nrows, ncols, **kwargs):
-   tab = QtWidgets.QWidget()
+   tab = MyResultWidget()
    gridLayout = QtWidgets.QGridLayout(tab)
    mpls = np.empty((nrows, ncols))
    mpls=mpls.astype(object)
@@ -361,6 +373,7 @@ class Window(QMainWindow, Ui_MainWindow):
       self.aborttask.clicked.connect(lambda: self.process_task(abort_cur=True))
       self.menu_tabs.currentChanged.connect(lambda index: self.on_computation_tab_clicked() if index==1 else None)
       self.dataframe_list.clicked.connect(lambda index: self.reload_from_selection())
+      self.result_tabs.tabCloseRequested.connect(lambda i: self.tab_close(i))
 
    def initialize_nice_gui(self):
       self.tableView.setSortingEnabled(True)
@@ -371,6 +384,10 @@ class Window(QMainWindow, Ui_MainWindow):
       sp_retain.setRetainSizeWhenHidden(True)
       self.progressBar.setSizePolicy(sp_retain)
       self.dataframe_list.expandAll()
+      self.result_tabs.clear()
+      # for t in self.result_tabs.children()[0].children():
+      #    print(t.objectName())
+      # input()
 
    def add_df(self, df):
       self.dfs.append(df)
@@ -528,6 +545,14 @@ class Window(QMainWindow, Ui_MainWindow):
       #             val.get_result()
       # return Task("compute", len(indices), compute, [], {"df": self.tableView.model()._dataframe, "indices":indices})
          
+
+   def tab_close(self, i):
+      # print(self.result_tabs.children()[i].objectName())
+         # for j, t in enumerate(self.result_tabs.children()[0].children()):
+         #    print(j, t.objectName(), t.figs)
+         # self.result_tabs.children()[0].children()[i].figs={}
+      self.result_tabs.removeTab(i)
+
    def on_computation_tab_clicked(self):
       if self.current_df is None:
          if len(self.dfs) == 0:logger.warning("No dfs")
@@ -539,8 +564,8 @@ class Window(QMainWindow, Ui_MainWindow):
 
    def view_row(self, row):
       df = self.dfs[self.current_df]
-      if hasattr(df, "view"):
-         self.result_tabs.clear()
+      if hasattr(df, "view") or hasattr(df, "view_bis"):
+         # self.result_tabs.clear()
          self.menu_tabs.setCurrentWidget(self.result_tab)
          if hasattr(df, "view_bis"):
             df.view_bis(row, self.result_tabs)
@@ -563,7 +588,7 @@ class Window(QMainWindow, Ui_MainWindow):
    def view_all_bis(self):
       df = self.dfs[self.current_df]
       if hasattr(df, "view_all_bis"):
-         self.result_tabs.clear()
+         # self.result_tabs.clear()
          self.menu_tabs.setCurrentWidget(self.result_tab)
          df.view_all_bis(self.result_tabs)
          self.curr_view_all = self.dfs[self.current_df]
@@ -633,10 +658,25 @@ class Window(QMainWindow, Ui_MainWindow):
       return t
    
    def export_all_figures(self):
-      if self.curr_view_all:
-         dir = QFileDialog.getExistingDirectory(self, "Select folder to export to")
-         if dir:
-            self.curr_view_all.export_figs(dir)
+      # if self.curr_view_all:
+      dir = QFileDialog.getExistingDirectory(self, "Select folder to export to")
+      if dir:
+         try:
+            ind=0
+            for i,b in enumerate(self.result_tabs.children()):
+               self.result_tabs.setCurrentWidget(b)
+               for j, t in enumerate(b.children()):
+                  if hasattr(t, "export"):
+                     self.result_tabs.setCurrentIndex(ind)
+
+                     logger.info(f"Export defined for tab {i}.{j} {b.objectName()}.{t.objectName()} of type {type(b)}.{type(t)}")
+                     t.export(str(dir))
+                     ind+=1
+                  else:
+                     logger.info(f"No export defined for tab {i}.{j} {b.objectName()}.{t.objectName()} of type {type(b)}.{type(t)}")
+         except BaseException as e:
+            logger.error(e)
+
 
    #  def __init__(self, parent=None):
    #    super().__init__(parent)

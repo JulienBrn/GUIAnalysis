@@ -94,8 +94,8 @@ class MTableView(QTableView):
     def viewRowSlot(self, selec, df):
       from analysisGUI.gui import Task
       win = self.window()
-      i = selec[0].row()
-      win.view_row(df.iloc[i,:])
+      for i in {s.row() for s in selec}:
+        win.view_row(df.iloc[i,:])
 
     def invalidateSlot(self, selec, df):
       from analysisGUI.gui import Task
