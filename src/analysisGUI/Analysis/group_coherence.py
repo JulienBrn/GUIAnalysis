@@ -1,10 +1,10 @@
-from analysisGUI.gui import GUIDataFrame
+from toolbox import GUIDataFrame
 import pathlib 
 import pandas as pd, numpy as np, scipy, math
 import toolbox
 import logging
 import functools
-from analysisGUI.gui import mk_result_tab, export_fig
+from toolbox import mk_result_tab, export_fig
 
 logger = logging.getLogger(__name__)
 

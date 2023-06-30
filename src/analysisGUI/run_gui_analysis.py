@@ -6,7 +6,7 @@
 # from analysisGUI import LFPDataDF
 # from analysisGUI import CleanDataDF
 # from analysisGUI import InputDataDF
-from analysisGUI import Window
+from toolbox import Window
 # from analysisGUI import group_coherenceDataDF
 from analysisGUI.Inputs.Monkey.read_monkey_files import ReadMonkeyFiles
 from analysisGUI.Inputs.Monkey.parse_monkey_files import ParseMonkeyFiles

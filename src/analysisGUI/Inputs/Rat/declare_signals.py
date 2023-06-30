@@ -1,5 +1,5 @@
 
-from analysisGUI.gui import GUIDataFrame
+from toolbox import GUIDataFrame
 import pathlib 
 import pandas as pd, numpy as np, scipy, h5py
 import toolbox

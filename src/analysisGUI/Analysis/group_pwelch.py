@@ -1,10 +1,10 @@
-from analysisGUI.gui import GUIDataFrame
+from toolbox import GUIDataFrame
 import pathlib 
 import pandas as pd, numpy as np, scipy, math
 import toolbox
 import logging
 import functools
-from analysisGUI.gui import mk_result_tab, export_fig
+from toolbox import mk_result_tab, export_fig
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ class PWelchGroups(GUIDataFrame):
 
 
         # title = "PWELCH best_f\n"+str(row[["Species", "Structure", "signal_resampled_type", "Condition", "nplots"]].to_dict()) + ", nb_non_error_plots: "+str(toolbox.get(row["nb_non_err"]))
-        # from analysisGUI.gui import mk_result_tab
+        # from toolbox import mk_result_tab
         # result_tab,mpls = mk_result_tab(1,1)
         # rtab.addTab(result_tab, title.replace("\n", ": "))
         # fig = mpls[0,0].canvas.fig
@@ -228,7 +228,7 @@ class PWelchGroups(GUIDataFrame):
 
 
         # self.figs = {}
-        # from analysisGUI.gui import mk_result_tab
+        # from toolbox import mk_result_tab
         # df = self.get_df()
         # row=df.iloc[0, :]
         # x = np.arange(0, row["pwelch_max_f"]+1/row["pwelch_fs"], 1/row["pwelch_fs"])
