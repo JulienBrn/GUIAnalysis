@@ -47,9 +47,9 @@ class CoherenceGroups(GUIDataFrame):
         df["best_val"]=df["best_val"].progress_apply(lambda x: x if  isinstance(x, tuple) else tuple([x]))
         df.insert(0, "nplots", df["coherence"].progress_apply(lambda x: len(x) if  isinstance(x, tuple) else 1))
         df.insert(0, "Mean", df["coherence"].progress_apply(lambda t: self.computation_m.declare_computable_ressource(
-            lambda **kwargs: np.mean(np.vstack(kwargs.values()),axis=0), {"r"+str(i):a for i, a in enumerate(t)}, toolbox.np_loader, "groups_coherence_avg", True, error_method="filter")))
+            lambda **kwargs: np.mean(np.vstack(tuple(kwargs.values())),axis=0), {"r"+str(i):a for i, a in enumerate(t)}, toolbox.np_loader, "groups_coherence_avg", True, error_method="filter")))
         df.insert(0, "Median_amp", df["coherence"].progress_apply(lambda t: self.computation_m.declare_computable_ressource(
-            lambda **kwargs: np.median(np.abs(np.vstack(kwargs.values())),axis=0), {"r"+str(i):a for i, a in enumerate(t)}, toolbox.np_loader, "groups_coherence_median_amp", True, error_method="filter")))
+            lambda **kwargs: np.median(np.abs(np.vstack(tuple(kwargs.values()))),axis=0), {"r"+str(i):a for i, a in enumerate(t)}, toolbox.np_loader, "groups_coherence_median_amp", True, error_method="filter")))
         df.insert(0, "nb_non_err", df["coherence"].progress_apply(lambda t: self.computation_m.declare_computable_ressource(
             lambda **kwargs: len(kwargs), {"r"+str(i):a for i, a in enumerate(t)}, toolbox.np_loader, "groups_coherence_nb_non_err", True, error_method="filter")))
         df.insert(0, "best_group_f_ind", df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(
@@ -62,10 +62,23 @@ class CoherenceGroups(GUIDataFrame):
             s = pd.DataFrame({"val": l})
             res = s.quantile([i/nbins for i in range(nbins)]).reset_index()
             return res
-        
+        def compute_nb_relevant(s, e, fs, min_val, min_consecutive, **plots):
+            if min_consecutive != 2:
+                raise NotImplementedError("only nconsecutive=2 implemented")
+            nb = 0
+            for plot in plots.values():
+                b = np.abs(plot) > min_val
+                f = b[1:]
+                s = b[:-1]
+                if 2 in s+f:
+                    nb+=1
+            return nb
+
         for sband, eband in [(8, 15), (14, 30)]:
            df.insert(0, f"dist_band_{sband}, {eband}", df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(
             compute_band_dist, {"s": sband, "e": eband, "fs": float(row["coherence_fs"]), "nbins": 100, **{"r"+str(i):a for i, a in enumerate(row["coherence"])}}, toolbox.df_loader, "coherence_band_dist", True,  error_method="filter"), axis=1))
+           df.insert(0, f"nb_relevant_{sband}, {eband}", df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(
+            compute_band_dist, {"s": sband, "e": eband, "fs": float(row["coherence_fs"]), "min_val": 0.05, "min_consecutive":2, **{"r"+str(i):a for i, a in enumerate(row["coherence"])}}, toolbox.float_loader, "coherence_band_relevant", True,  error_method="filter"), axis=1))
         return df
     
 
