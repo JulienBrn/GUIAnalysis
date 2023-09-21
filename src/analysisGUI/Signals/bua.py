@@ -20,29 +20,29 @@ class BUA(GUIDataFrame):
             , computation_m, {"db":signals})
         self.computation_m = computation_m
     
-    def compute_df(self, db: pd.DataFrame):
+    def compute_df(self, db: pd.DataFrame, **params):
         self.tqdm.pandas(desc="Computing bua signals")
         df = db.copy()
 
-        for key,val in self.metadata.items():
-            if "bua." in key:
-                df[str(key[len("bua."):])] = val
+        for key,val in params.items():
+            if "bua_" in key:
+                df[str(key[len("bua_"):])] = val
 
         
 
         df.insert(0, "bua_signal", df.progress_apply(lambda row: 
             self.computation_m.declare_computable_ressource(extract_bua,
                 dict(sig=row["cleaned_signal"], fs = row["input_signal_fs"], 
-                     filter_low_freq=float(row["bandpass.low_freq"]),
-                     filter_high_freq=float(row["bandpass.high_freq"]),
-                     filter_refreq=float(row["lowpass.freq"]),
-                     order=float(row["passes.order"]),
+                     filter_low_freq=float(row["bandpass_low_freq"]),
+                     filter_high_freq=float(row["bandpass_high_freq"]),
+                     filter_refreq=float(row["lowpass_freq"]),
+                     order=float(row["passes_order"]),
                 ), toolbox.np_loader, "bua_signal", False
             ),
             axis=1)
         )
 
-        df.insert(0, "signal_resampled_fs", float(self.metadata["signals.fs"]))
+        df.insert(0, "signal_resampled_fs", float(params["signals_fs"]))
         df.insert(0, "signal_resampled", df.progress_apply(lambda row:
             self.computation_m.declare_computable_ressource(
                 lambda sig, fs, out_fs: scipy.signal.resample(sig, math.ceil(sig.size* out_fs/float(fs))),

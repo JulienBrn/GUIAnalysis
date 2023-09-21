@@ -18,14 +18,14 @@ class SpikeBins(GUIDataFrame):
             , computation_m, {"db":signals})
         self.computation_m = computation_m
     
-    def compute_df(self, db: pd.DataFrame):
+    def compute_df(self, db: pd.DataFrame, **params):
         self.tqdm.pandas(desc="Computing spike bins")
         df = db[db["input_signal_type"]=="spike_times"].copy()
         
-        for key,val in self.metadata.items():
-            if "spike_bins." in key:
-                df[str(key[len("spike_bins."):])] = val
-        df["spike_bins_fs"] = self.metadata["signals.fs"]
+        for key,val in params.items():
+            if "spike_bins_" in key:
+                df[str(key[len("spike_bins_"):])] = val
+        df["spike_bins_fs"] = params["signals_fs"]
 
         df.insert(0, "spike_bins_signal", df.progress_apply(lambda row: 
             self.computation_m.declare_computable_ressource(make_continuous,
@@ -39,7 +39,7 @@ class SpikeBins(GUIDataFrame):
             axis=1)
         )
         
-        df.insert(0, "signal_resampled_fs", float(self.metadata["signals.fs"]))
+        df.insert(0, "signal_resampled_fs", float(params["signals_fs"]))
         df.insert(0, "signal_resampled", df["spike_bins_signal"])
         
         return df

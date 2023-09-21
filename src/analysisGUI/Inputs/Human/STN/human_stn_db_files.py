@@ -19,13 +19,13 @@ class HumanSTNDatabaseFiles(GUIDataFrame):
         self.computation_m = computation_m
         
     
-    def compute_df(self):
-        file_pattern = self.metadata["inputs.human.stn.db.file_pattern"]
-        key_pattern = self.metadata["inputs.human.stn.db.key_pattern"]
-        base_folder = self.metadata["inputs.human.stn.db.base_folder"]
-        part_range = ast.literal_eval(self.metadata["inputs.human.stn.db.part_range"])
+    def compute_df(self, inputs_human_stn_db_base_folder, inputs_human_stn_db_file_pattern, inputs_human_stn_db_key_pattern, inputs_human_stn_db_part_range, inputs_human_stn_db_structure):
+        file_pattern = inputs_human_stn_db_file_pattern
+        key_pattern = inputs_human_stn_db_key_pattern
+        base_folder = inputs_human_stn_db_base_folder
+        part_range = ast.literal_eval(inputs_human_stn_db_part_range)
         part_range = range(part_range[0], part_range[1])
-        structure = ast.literal_eval(self.metadata["inputs.human.stn.db.structure"])
+        structure = ast.literal_eval(inputs_human_stn_db_structure)
 
         l=[]
         for part, structure in itertools.product(part_range, structure):

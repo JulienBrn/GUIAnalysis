@@ -12,14 +12,14 @@ class ParsedHumanSTNMUADataBase(GUIDataFrame):
                     "/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/Human_STN_Correct_All"}, computation_m, {"db":parsed_human_stn_db})
         self.computation_m = computation_m
     
-    def compute_df(self, db):
+    def compute_df(self, db, inputs_human_stn_files_base_folder):
         self.tqdm.pandas(desc="Computing human stn mua")
         raw_df =  db.copy()
         raw_df["file_keys"] = raw_df.progress_apply(lambda row: ["CElectrode{}".format(row["Electrode"])], axis=1) 
         raw_df["signal_path"] = raw_df.progress_apply(lambda row: toolbox.DataPath(row["file_path"], row["file_keys"]), axis=1)
         raw_df["signal_fs_path"] = raw_df.progress_apply(lambda row: toolbox.DataPath(row["file_path"], ["CElectrode{}_KHz".format(row["Electrode"])]), axis=1)
         raw_df["signal_type"] = "mua"
-        base_folder = self.metadata["inputs.human.stn.files.base_folder"]
+        base_folder = inputs_human_stn_files_base_folder
         def declare_raw_sig(dp):
             mat =  scipy.io.loadmat(base_folder+"/"+dp.file_path, variable_names=dp.keys[0])
             raw = np.squeeze(mat[dp.keys[0]])

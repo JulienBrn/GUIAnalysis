@@ -12,7 +12,7 @@ class ParsedHumanSTNNeuronDataBase(GUIDataFrame):
                     "/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/Human_STN_Correct_All"}, computation_m, {"db":parsed_human_stn_db})
         self.computation_m = computation_m
     
-    def compute_df(self, db):
+    def compute_df(self, db, inputs_human_stn_files_base_folder):
         self.tqdm.pandas(desc="Computing human stn neurons")
         df =  db.copy()
         for i in range(4):
@@ -43,7 +43,7 @@ class ParsedHumanSTNNeuronDataBase(GUIDataFrame):
         neuron_df["signal_fs"] = neuron_df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(declare_fs, {"dp": row["signal_fs_path"]}, toolbox.float_loader, "human_input_fs", True), axis=1)
     
 
-        base_folder = self.metadata["inputs.human.stn.files.base_folder"]
+        base_folder = inputs_human_stn_files_base_folder
         def declare_spike_sig(signal_path, neuron):
             mat = toolbox.matlab_loader.load(base_folder+"/"+signal_path.file_path)
             spike_df = np.squeeze(mat["sortingResults"])[()]

@@ -21,7 +21,7 @@ class Coherence(GUIDataFrame):
             , computation_m, {"db":signals})
         self.computation_m = computation_m
     
-    def compute_df(self, db: pd.DataFrame):
+    def compute_df(self, db: pd.DataFrame, **params):
 
         self.tqdm.pandas(desc="Computing coherence_df") 
         df = toolbox.group_and_combine(db, ["Condition", "Subject", "Species", "Session", "Date", "Healthy"])
@@ -45,9 +45,9 @@ class Coherence(GUIDataFrame):
         df["signal_resampled_fs"] = df["signal_resampled_fs_1"]
         
         
-        for key,val in self.metadata.items():
-            if "coherence." in key:
-                df[str(key[len("coherence."):])] = val
+        for key,val in params.items():
+            if "coherence_" in key:
+                df[str(key[len("coherence_"):])] = val
 
         df.insert(0, "coherence_nb_f", df.progress_apply(lambda row:  1+int(float(row["window_duration"]) * float(row["signal_resampled_fs"])/2), axis=1))
         df.insert(0, "coherence_max_f", df.progress_apply(lambda row:  float(row["signal_resampled_fs"])/2, axis=1))
@@ -68,13 +68,13 @@ class Coherence(GUIDataFrame):
             axis=1)
         )
         df.insert(0, "best_f_ind", df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(
-            lambda a, min, max, fs: np.argmax(np.abs(a[int(min*fs):int(max*fs)])) + int(min*fs), {"a":row["coherence"], "min":float(row["best_f.min"]), "max":float(row["best_f.max"]), "fs": row["coherence_fs"]}, 
+            lambda a, min, max, fs: np.argmax(np.abs(a[int(min*fs):int(max*fs)])) + int(min*fs), {"a":row["coherence"], "min":float(row["best_f_min"]), "max":float(row["best_f_max"]), "fs": row["coherence_fs"]}, 
             toolbox.float_loader, "coherence_best_f_ind", True), axis=1))
         df.insert(0, "best_f", df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(
-            lambda a, min, max, fs: (np.argmax(abs(a[int(min*fs):int(max*fs)])) + int(min*fs))/float(fs), {"a":row["coherence"], "min":float(row["best_f.min"]), "max":float(row["best_f.max"]), "fs": row["coherence_fs"]}, 
+            lambda a, min, max, fs: (np.argmax(abs(a[int(min*fs):int(max*fs)])) + int(min*fs))/float(fs), {"a":row["coherence"], "min":float(row["best_f_min"]), "max":float(row["best_f_max"]), "fs": row["coherence_fs"]}, 
             toolbox.float_loader, "coherence_best_f", True), axis=1))
         df.insert(0, "best_amp", df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(
-            lambda a, min, max, fs: float(np.amax(abs(a[int(min*fs):int(max*fs)]))), {"a":row["coherence"], "min":float(row["best_f.min"]), "max":float(row["best_f.max"]), "fs": row["coherence_fs"]}, 
+            lambda a, min, max, fs: float(np.amax(abs(a[int(min*fs):int(max*fs)]))), {"a":row["coherence"], "min":float(row["best_f_min"]), "max":float(row["best_f_max"]), "fs": row["coherence_fs"]}, 
             toolbox.float_loader, "coherence_best_amp", True), axis=1))
         df.insert(0, "best_val", df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(
             lambda a, ind: complex(a[int(ind)]), {"a":row["coherence"], "ind": row["best_f_ind"]}, 

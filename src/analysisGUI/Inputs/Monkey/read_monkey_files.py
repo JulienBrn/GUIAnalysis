@@ -14,9 +14,9 @@ class ReadMonkeyFiles(GUIDataFrame):
         self.computation_m = computation_m
         
 
-    def compute_df(self):
-        base_folder = pathlib.Path(self.metadata["inputs.monkey.files.base_folder"])
-        files = toolbox.find_files_recursively(self.metadata["inputs.monkey.files.base_folder"], tqdm=self.tqdm)
+    def compute_df(self, inputs_monkey_files_base_folder):
+        base_folder = pathlib.Path(inputs_monkey_files_base_folder)
+        files = toolbox.find_files_recursively(inputs_monkey_files_base_folder, tqdm=self.tqdm)
         files = [pathlib.Path(f) for f in files]
         return pd.DataFrame([[str(f.relative_to(base_folder))] for f in files if f.is_file()], columns = ["Files"])
     

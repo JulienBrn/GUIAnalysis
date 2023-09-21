@@ -14,8 +14,8 @@ class ReadHumanOtherDataBase(GUIDataFrame):
         self.computation_m = computation_m
         
     
-    def compute_df(self):
-        m = toolbox.matlab_loader.load(self.metadata["inputs.human.other.db.path"])
+    def compute_df(self, inputs_human_other_db_path):
+        m = toolbox.matlab_loader.load(inputs_human_other_db_path)
         df=pd.DataFrame(m["AllHumanData"])
         for col in df.columns:
             df[col] = df.apply(lambda row: np.reshape(row[col], -1)[0] if row[col].size == 1 else None if row[col].size == 0 else row[col], axis=1).astype(str)

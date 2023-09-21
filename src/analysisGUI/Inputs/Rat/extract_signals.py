@@ -9,21 +9,21 @@ logger = logging.getLogger(__name__)
 
 class ExtractRatSignals(GUIDataFrame):
     def __init__(self, db, computation_m):
-        super().__init__("inputs.rat.signals.extract", {}, computation_m, {"db":db}, save=True)
+        super().__init__("inputs.rat.signals.extract", {"inputs.rat.files.base_folder":"/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/NicoAnalysis/Rat_Data"}, computation_m, {"db":db}, save=True)
         self.computation_m = computation_m
     
-    def compute_df(self, db: pd.DataFrame):
+    def compute_df(self, db: pd.DataFrame, inputs_rat_files_base_folder):
         self.tqdm.pandas(desc="Extracting (channels, unit) mapping")
         df = db.copy()
         group_cols = [col for col in df.columns if col not in ["raw_file_path", "units_file_path"]]
         df = df.groupby(by=group_cols).progress_apply(
-                lambda row: self.extract_channels_and_units(row["raw_file_path"].iat[0], row["units_file_path"].iat[0])
+                lambda row: self.extract_channels_and_units(row["raw_file_path"].iat[0], row["units_file_path"].iat[0], inputs_rat_files_base_folder)
             ).reset_index(level=group_cols).reset_index(drop=True)
         return df
     
-    def extract_channels_and_units(self, raw_file_path, spike_file_path):
+    def extract_channels_and_units(self, raw_file_path, spike_file_path, inputs_rat_files_base_folder):
         if raw_file_path and not type(raw_file_path) is float:
-            with h5py.File(self.metadata["inputs.rat.files.base_folder"] + "/"+ raw_file_path, 'r') as file:
+            with h5py.File(str(pathlib.Path(inputs_rat_files_base_folder) / raw_file_path), 'r') as file:
                 raw_keys = [k for k in file.keys()]
                 fs = [1.0/float(file[key]["interval"][0,0]) for key in raw_keys]
                 duration_raw = [np.size(file[key]["values"])*float(file[key]["interval"][0,0]) for key in raw_keys]
@@ -35,7 +35,7 @@ class ExtractRatSignals(GUIDataFrame):
             duration_raw=[]
             probes_raw=[]
         if spike_file_path and not type(spike_file_path) is float:
-            with h5py.File(self.metadata["inputs.rat.files.base_folder"] + "/"+ spike_file_path, 'r') as file:
+            with h5py.File(str(pathlib.Path(inputs_rat_files_base_folder) / spike_file_path), 'r') as file:
                 spike_keys = [k for k in file.keys()]
                 duration_spike=[float(np.squeeze(file[key]["length"])) for key in spike_keys]
                 rs = [re.compile("Pr_([0-9]+)"), re.compile("Pr([0-9]+)"), re.compile("P(([0-9]+_)+)")]

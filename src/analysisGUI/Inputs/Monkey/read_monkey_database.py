@@ -15,8 +15,8 @@ class ReadMonkeyDataBase(GUIDataFrame):
         self.computation_m = computation_m
         
     
-    def compute_df(self):
-        df = pd.read_csv(str(self.metadata["inputs.monkey.db.path"]), sep=self.metadata["inputs.monkey.db.separator"])
+    def compute_df(self, inputs_monkey_db_path, inputs_monkey_db_separator):
+        df = pd.read_csv(str(inputs_monkey_db_path), sep=inputs_monkey_db_separator)
         return df
 
 

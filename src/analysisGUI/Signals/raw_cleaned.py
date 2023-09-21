@@ -21,23 +21,23 @@ class Clean(GUIDataFrame):
             , computation_m, {"db":signals})
         self.computation_m = computation_m
     
-    def compute_df(self, db: pd.DataFrame):
+    def compute_df(self, db: pd.DataFrame, **params):
         self.tqdm.pandas(desc="Computing cleaned signals")
         df = db[db["input_signal_type"].isin(["raw", "mua"])].copy()
 
-        for key,val in self.metadata.items():
-            if "clean." in key:
-                df[str(key[len("clean."):])] = val
+        for key,val in params.items():
+            if "clean_" in key:
+                df[str(key[len("clean_"):])] = val
 
         df.insert(0, "clean_rm_bounds", df.progress_apply(lambda row: 
             self.computation_m.declare_computable_ressource(
                 lambda **kwargs: pd.DataFrame(toolbox.compute_artefact_bounds(**kwargs),columns=["start", "end"]),
                 dict(sig=row["input_signal"], fs = row["input_signal_fs"], 
-                     deviation_factor=float(self.metadata["clean.deviation_factor"]),
-                     min_length=float(self.metadata["clean.min_length"]),
-                     join_width=float(self.metadata["clean.join_width"]),
-                     recursive=bool(self.metadata["clean.recursive"]),
-                     shoulder_width=float(self.metadata["clean.shoulder_width"])
+                     deviation_factor=float(row["deviation_factor"]),
+                     min_length=float(row["min_length"]),
+                     join_width=float(row["join_width"]),
+                     recursive=bool(row["recursive"]),
+                     shoulder_width=float(row["shoulder_width"])
                 ), toolbox.df_loader, "clean_bounds", True
             ),
             axis=1)
@@ -46,7 +46,7 @@ class Clean(GUIDataFrame):
 
         df.insert(1, "cleaned_signal", df.progress_apply(lambda row: 
             self.computation_m.declare_computable_ressource(generate_clean,
-                dict(signal=row["input_signal"], clean_bounds = row["clean_rm_bounds"], replace_type=self.metadata["clean.replace_type"])
+                dict(signal=row["input_signal"], clean_bounds = row["clean_rm_bounds"], replace_type=row["replace_type"])
                 , toolbox.np_loader, "clean_signal", False
             ),axis=1)
         )

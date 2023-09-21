@@ -18,13 +18,13 @@ class LFP(GUIDataFrame):
             , computation_m, {"db":signals})
         self.computation_m = computation_m
     
-    def compute_df(self, db: pd.DataFrame):
+    def compute_df(self, db: pd.DataFrame, **params):
         self.tqdm.pandas(desc="Computing lfp signals")
         df = db[db["input_signal_type"]!="mua"].copy()
 
-        for key,val in self.metadata.items():
-            if "lfp." in key:
-                df[str(key[len("lfp."):])] = val
+        for key,val in params.items():
+            if "lfp_" in key:
+                df[str(key[len("lfp_"):])] = val
 
 
         df.insert(0, "lfp_signal", df.progress_apply(lambda row: 
@@ -37,7 +37,7 @@ class LFP(GUIDataFrame):
             axis=1)
         )
         
-        df.insert(0, "signal_resampled_fs", float(self.metadata["signals.fs"]))
+        df.insert(0, "signal_resampled_fs", float(params["signals_fs"]))
         df.insert(0, "signal_resampled", df.progress_apply(lambda row:
             self.computation_m.declare_computable_ressource(
                 lambda sig, fs, out_fs: scipy.signal.resample(sig, math.ceil(sig.size* out_fs/float(fs))),

@@ -9,10 +9,10 @@ logger = logging.getLogger(__name__)
 
 class DeclareMonkeyRaw(GUIDataFrame):
     def __init__(self, monkey_md, computation_m: toolbox.Manager):
-        super().__init__("inputs.monkey.signals.raw", {}, computation_m, {"db":monkey_md})
+        super().__init__("inputs.monkey.signals.raw", {"inputs.monkey.files.base_folder":"/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/MarcAnalysis/Inputs/MonkeyData4Review"}, computation_m, {"db":monkey_md})
         self.computation_m = computation_m
     
-    def compute_df(self, db: pd.DataFrame):
+    def compute_df(self, db: pd.DataFrame, inputs_monkey_files_base_folder):
         raw_df = db.groupby(["Date","Species", "Condition", "Healthy", "Subject", "Electrode", "Depth", "Structure", "Session"]).aggregate(lambda x: tuple(x)).reset_index()
         raw_df.insert(0, "signal_fs", 25000)
         raw_df.insert(0, "signal_type", "raw")
@@ -26,7 +26,7 @@ class DeclareMonkeyRaw(GUIDataFrame):
         self.tqdm.pandas(desc="Declaring signal matrix")
         raw_df.insert(0, "signal_matrix",raw_df.progress_apply(
             lambda row: self.computation_m.declare_computable_ressource(
-                lambda dpl, fs: mk_matrix(dpl, self.metadata["inputs.monkey.files.base_folder"], fs),
+                lambda dpl, fs: mk_matrix(dpl, inputs_monkey_files_base_folder, fs),
                 {"dpl": row["signal_path"], "fs": row["signal_fs"]},
                 toolbox.np_loader, "monkey_input_matrix", False),
             axis=1
@@ -97,10 +97,16 @@ from tqdm import tqdm
 
 def find_shift(matrix, max_amount):
     import itertools
-    tests = itertools.product(toolbox.crange(0, max_amount), repeat=matrix.shape[0] -1)
+    tests = list(itertools.product(toolbox.crange(0, max_amount), repeat=matrix.shape[0] -1))
     relevant_indices = np.argwhere(~np.isnan(matrix[0, :])).flatten()
     relevant_indices = relevant_indices[::(int(len(relevant_indices)/100)+1)]
-    for shift in tqdm(list(tests)):
+    if len(tests) > 1:
+        progress = lambda x: tqdm(x, desc = "Finding shift")
+    else:
+        progress = lambda x: x
+    if len(tests) == 0:
+        logger.error("Test size zero in find shift")
+    for shift in progress(list(tests)):
         shift = [0] + list(shift)
         nb_identical, nb_different = eval(shift_matrix(matrix[:, relevant_indices], shift))
         if nb_different!=0:

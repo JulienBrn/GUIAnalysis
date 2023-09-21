@@ -9,7 +9,7 @@ class ReadHumanSTNDataBase(GUIDataFrame):
     def __init__(self, list_db, computation_m):
         super().__init__("inputs.human.stn.db.read", 
             {
-                "inputs.human.stn.db.separator":",",
+                # "inputs.human.stn.db.separator":",",
             }, computation_m, {"list_db": list_db}, save=False)
         self.computation_m = computation_m
         
@@ -22,7 +22,7 @@ class ReadHumanSTNDataBase(GUIDataFrame):
             mat = toolbox.matlab_loader.load(entry.file_path)
             df = pd.DataFrame(mat[entry.keys[0]])
             for col in df.columns:
-                df[col] = df.progress_apply(lambda row: np.reshape(row[col], -1)[0] if row[col].size == 1 else None if row[col].size == 0 else row[col], axis=1)
+                df[col] = df.apply(lambda row: np.reshape(row[col], -1)[0] if row[col].size == 1 else None if row[col].size == 0 else row[col], axis=1)
                 if df[col].isnull().all():
                     df.drop(columns=[col], inplace=True)
             df.columns = [str(s) for s in df.iloc[0, :].to_list()]

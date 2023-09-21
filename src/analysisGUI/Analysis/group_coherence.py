@@ -17,19 +17,27 @@ class CoherenceGroups(GUIDataFrame):
             }
             , computation_m, {"db":signals})
         self.computation_m = computation_m
+        self.key_columns = ["Species", "Healthy", "Structure_1", "signal_resampled_type_1", "Structure_2","signal_resampled_type_2", "Same_Electrode"]
     
-    def compute_df(self, db: pd.DataFrame):
+    def compute_df(self, db: pd.DataFrame, **params):
         self.tqdm.pandas(desc="Computing group coherence_df") 
         df = db.copy()
         df = df.groupby(["Species",  "Condition", "Structure_1", "signal_resampled_type_1", "Structure_2","signal_resampled_type_2", "Same_Electrode"]).agg(lambda x:tuple(x)).reset_index()
+        df["Healthy"] = df["Condition"].apply(lambda x: "healthy" in x or "CTL" in x)
+        df["Structure_1_old"] = df["Structure_1"]
+        df["Structure_2_old"] = df["Structure_2"]
+        df["Structure_1"] = df["Structure_1_old"].apply(lambda x: "STR" if ("MSN" in x.upper() or "STR" in x.upper()) else "STN" if ("STN"== x.upper() or "STN_DLOR"== x.upper()) else "GPe" if "GPE" in x.upper() else x)
+        df["Structure_2"] = df["Structure_2_old"].apply(lambda x: "STR" if ("MSN" in x.upper() or "STR" in x.upper()) else "STN" if ("STN"== x.upper() or "STN_DLOR"== x.upper()) else "GPe" if "GPE" in x.upper() else x)
+        mfilter = (df["Same_Electrode"] == False) & (df["Structure_1"] ==  df["Structure_2"]) & (df["Structure_1"].isin(["GPe", "STN", "STR"])) & (df["signal_resampled_type_1"].isin(["bua", "spike_bins"])) & (df["signal_resampled_type_2"].isin(["bua", "spike_bins"])) &  (df["signal_resampled_type_1"] != df["signal_resampled_type_2"])
+        df = df[mfilter].copy()
         def is_identical(x):
             try:
                 return isinstance(x, tuple) and len(set(x)) == 1
             except: 
                 False
-        for key,val in self.metadata.items():
-            if "coherence." in key:
-                df[str(key[len("coherence."):])] = val
+        for key,val in params.items():
+            if "coherence_" in key:
+                df[str(key[len("coherence_"):])] = val
 
         for col in df.columns:
             df[col] = df[col].apply(lambda x: x if not is_identical(x) else x[0])
@@ -45,9 +53,19 @@ class CoherenceGroups(GUIDataFrame):
         df.insert(0, "nb_non_err", df["coherence"].progress_apply(lambda t: self.computation_m.declare_computable_ressource(
             lambda **kwargs: len(kwargs), {"r"+str(i):a for i, a in enumerate(t)}, toolbox.np_loader, "groups_coherence_nb_non_err", True, error_method="filter")))
         df.insert(0, "best_group_f_ind", df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(
-            lambda a, min, max, fs: np.argmax(np.abs(a[int(min*fs):int(max*fs)])) + int(min*fs), {"a": row["Mean"], "min": float(row["groups.best_f.min"]), "max": float(row["groups.best_f.max"]), "fs": float(row["coherence_fs"])}, toolbox.float_loader, "groups_coherence_best_f_ind", True), axis=1))
+            lambda a, min, max, fs: np.argmax(np.abs(a[int(min*fs):int(max*fs)])) + int(min*fs), {"a": row["Mean"], "min": float(row["groups_best_f_min"]), "max": float(row["groups_best_f_max"]), "fs": float(row["coherence_fs"])}, toolbox.float_loader, "groups_coherence_best_f_ind", True), axis=1))
         df.insert(0, "best_group_f", df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(
-            lambda a, min, max, fs: float(np.argmax(np.abs(a[int(min*fs):int(max*fs)])) + int(min*fs))/fs, {"a": row["Mean"], "min": float(row["groups.best_f.min"]), "max": float(row["groups.best_f.max"]), "fs": float(row["coherence_fs"])}, toolbox.float_loader, "groups_coherence_best_f", True), axis=1))
+            lambda a, min, max, fs: float(np.argmax(np.abs(a[int(min*fs):int(max*fs)])) + int(min*fs))/fs, {"a": row["Mean"], "min": float(row["groups_best_f_min"]), "max": float(row["groups_best_f_max"]), "fs": float(row["coherence_fs"])}, toolbox.float_loader, "groups_coherence_best_f", True), axis=1))
+        
+        def compute_band_dist(s, e, fs, nbins, **plots):
+            l = [np.abs(np.sum(plot[int(s*fs): int(e*fs)])/(int(e*fs) - int(s*fs))) for plot in plots.values()]
+            s = pd.DataFrame({"val": l})
+            res = s.quantile([i/nbins for i in range(nbins)]).reset_index()
+            return res
+        
+        for sband, eband in [(8, 15), (14, 30)]:
+           df.insert(0, f"dist_band_{sband}, {eband}", df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(
+            compute_band_dist, {"s": sband, "e": eband, "fs": float(row["coherence_fs"]), "nbins": 100, **{"r"+str(i):a for i, a in enumerate(row["coherence"])}}, toolbox.df_loader, "coherence_band_dist", True,  error_method="filter"), axis=1))
         return df
     
 
