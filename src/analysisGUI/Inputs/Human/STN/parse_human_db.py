@@ -34,8 +34,8 @@ class ParseHumanSTNDataBase(GUIDataFrame):
             return dur
         self.tqdm.pandas(desc="Declaring durations")
         df["Duration"] = df["file_path"].apply(lambda fp: self.computation_m.declare_computable_ressource(get_duration, {"fp":fp}, toolbox.float_loader, "human_input_durations", True))
-        df.insert(0, "Discarded", df[(~df["Depth"].isna())].duplicated(subset=["Session", "Depth","Electrode"], keep=False))
-        df = df.sort_values(["Discarded", "Session", "Depth", "Electrode"], ignore_index=True, ascending=False)
+        df.insert(0, "_Discarded", df[(~df["Depth"].isna())].duplicated(subset=["Session", "Depth","Electrode"], keep=False))
+        df = df.sort_values(["_Discarded", "Session", "Depth", "Electrode"], ignore_index=True, ascending=False)
         # df = df[df["Maybe Duplicate"]!=True].reset_index(drop=True)
         return df
 
