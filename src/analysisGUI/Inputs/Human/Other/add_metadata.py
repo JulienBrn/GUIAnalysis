@@ -10,7 +10,8 @@ class AddHumanOtherMetadata(GUIDataFrame):
         self.computation_m = computation_m
     
     def compute_df(self, db, inputs_human_other_files_base_folder):
-        df =  db[db["Source"]=="Files + DB"].copy()
+        # df =  db[db["Source"]=="Files + DB"].copy()
+        df = db
         df["Species"] = "Human"
         df["Healthy"] = df["Condition"] != "PD"
         df["Hemisphere"] = df['DateH'].str.extract(r'_([RL])(\d?)($|_)')[0]

@@ -43,6 +43,12 @@ class CoherenceGroups(GUIDataFrame):
             df[col] = df[col].apply(lambda x: x if not is_identical(x) else x[0])
         
         df["coherence"]=df["coherence"].progress_apply(lambda x: x if  isinstance(x, tuple) else tuple([x]))
+        def mk_group_df(nb_f, fs, **sigs, ):
+            df = pd.DataFrame(list(sigs.values()), columns=[i*fs for i in range(nb_f)])
+            return df
+
+        df.insert(0, "group_df", df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(
+            mk_group_df, {"fs": float(row["coherence_fs"]), "nb_f": int(row["coherence_nb_f"]), **{"r"+str(i):a for i, a in enumerate(row["coherence"])}}, toolbox.df_loader, "coherence_group_df", True, error_method="filter"), axis=1))
         df["best_f"]=df["best_f"].progress_apply(lambda x: x if  isinstance(x, tuple) else tuple([x]))
         df["best_val"]=df["best_val"].progress_apply(lambda x: x if  isinstance(x, tuple) else tuple([x]))
         df.insert(0, "nplots", df["coherence"].progress_apply(lambda x: len(x) if  isinstance(x, tuple) else 1))
@@ -78,10 +84,10 @@ class CoherenceGroups(GUIDataFrame):
            df.insert(0, f"dist_band_{sband}, {eband}", df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(
             compute_band_dist, {"s": sband, "e": eband, "fs": float(row["coherence_fs"]), "nbins": 100, **{"r"+str(i):a for i, a in enumerate(row["coherence"])}}, toolbox.df_loader, "coherence_band_dist", True,  error_method="filter"), axis=1))
            df.insert(0, f"nb_relevant_{sband}, {eband}", df.progress_apply(lambda row: self.computation_m.declare_computable_ressource(
-            compute_band_dist, {"s": sband, "e": eband, "fs": float(row["coherence_fs"]), "min_val": 0.05, "min_consecutive":2, **{"r"+str(i):a for i, a in enumerate(row["coherence"])}}, toolbox.float_loader, "coherence_band_relevant", True,  error_method="filter"), axis=1))
+            compute_nb_relevant, {"s": sband, "e": eband, "fs": float(row["coherence_fs"]), "min_val": 0.05, "min_consecutive":2, **{"r"+str(i):a for i, a in enumerate(row["coherence"])}}, toolbox.float_loader, "coherence_band_relevant", True,  error_method="filter"), axis=1))
         return df
     
-
+ 
     def view_bis(self, row, rtab):
         if toolbox.get(row["nb_non_err"])<=0:
             return
