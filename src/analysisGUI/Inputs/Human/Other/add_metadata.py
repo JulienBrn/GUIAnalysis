@@ -6,10 +6,10 @@ import toolbox
 
 class AddHumanOtherMetadata(GUIDataFrame):
     def __init__(self, merged_db, computation_m):
-        super().__init__("inputs.human.other.merged.metadata", {}, computation_m, {"db":merged_db}, alternative_names=["inputs.human.other.merged"])
+        super().__init__("inputs.human.other.merged.metadata", {"inputs.human.other.files.base_folder": "/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/HumanData4review/"}, computation_m, {"db":merged_db}, alternative_names=["inputs.human.other.merged"])
         self.computation_m = computation_m
     
-    def compute_df(self, db):
+    def compute_df(self, db, inputs_human_other_files_base_folder):
         df =  db[db["Source"]=="Files + DB"].copy()
         df["Species"] = "Human"
         df["Healthy"] = df["Condition"] != "PD"
@@ -23,7 +23,7 @@ class AddHumanOtherMetadata(GUIDataFrame):
         df["Session"] = "HO#" + df.groupby(by=["Date", "Hemisphere", "Electrode", "Depth"]).ngroup().astype(str)
         df["raw_fs"] = df["Date"].apply(lambda d: 48000 if d < "2015_01_01" else 44000)
         def get_duration(fp, raw_fs):
-            mat = scipy.io.loadmat(self.metadata["inputs.human.other.files.base_folder"] + "/" + fp)
+            mat = scipy.io.loadmat(inputs_human_other_files_base_folder + "/" + fp)
             dur = np.squeeze(mat["MUA"]).size / raw_fs
             return dur
         df["Duration"] = df.apply(lambda row: self.computation_m.declare_computable_ressource(get_duration, {"fp": row["file_path"], "raw_fs": row["raw_fs"]}, toolbox.float_loader, "human_other_input_duration", True), axis=1)

@@ -9,16 +9,16 @@ logger = logging.getLogger(__name__)
 
 class DeclareMonkeySpikes(GUIDataFrame):
     def __init__(self, monkey_md, computation_m: toolbox.Manager):
-        super().__init__("inputs.monkey.signals.spikes", {}, computation_m, {"db":monkey_md})
+        super().__init__("inputs.monkey.signals.spikes", {"inputs.monkey.files.base_folder":"/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/MarcAnalysis/Inputs/MonkeyData4Review"}, computation_m, {"db":monkey_md})
         self.computation_m = computation_m
     
-    def compute_df(self, db: pd.DataFrame):
+    def compute_df(self, db: pd.DataFrame, inputs_monkey_files_base_folder):
         neuron_df = db.copy()
         neuron_df.insert(0, "signal_fs", 40000)
         neuron_df.insert(0, "signal_type", "spike_times")
         neuron_df.insert(len(neuron_df.columns),"signal_path", neuron_df["Files"].apply(lambda fp: toolbox.DataPath(fp, ["SUA"])))
         def declare_spikes(dp):
-            mat =  scipy.io.loadmat(str(self.metadata["inputs.monkey.files.base_folder"])+"/"+dp.file_path, variable_names=dp.keys[0])
+            mat =  scipy.io.loadmat(str(inputs_monkey_files_base_folder)+"/"+dp.file_path, variable_names=dp.keys[0])
             spikes = np.squeeze(mat[dp.keys[0]])
             return spikes
         

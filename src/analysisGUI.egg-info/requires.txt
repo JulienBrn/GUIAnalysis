@@ -1,7 +1,6 @@
 pandas
 matplotlib
 PyQt5
-sklearn
 scikit-learn
 scipy
 numpy

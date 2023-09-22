@@ -9,10 +9,10 @@ logger = logging.getLogger(__name__)
 
 class DeclareHumanOtherSpikes(GUIDataFrame):
     def __init__(self, md, computation_m: toolbox.Manager):
-        super().__init__("inputs.human.other.signals.spikes", {}, computation_m, {"db":md})
+        super().__init__("inputs.human.other.signals.spikes", {"inputs.human.other.files.base_folder": "/run/user/1000/gvfs/smb-share:server=filer2-imn,share=t4/Julien/HumanData4review/"}, computation_m, {"db":md})
         self.computation_m = computation_m
     
-    def compute_df(self, db: pd.DataFrame):
+    def compute_df(self, db: pd.DataFrame, inputs_human_other_files_base_folder):
         neuron_df = db.copy()
         neuron_df["signal_type"] = "spike_times"
         neuron_df["signal_fs"] = 1
